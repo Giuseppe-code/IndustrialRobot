@@ -38,12 +38,11 @@ class AckermannController:
         (xt, yt) = self.trajectory.evaluate(delta_t)
         (vt, alpha_c) = self.polar2D.evaluate(delta_t=delta_t, xt=xt, yt=yt, current_pose=self.pose)
         error_v= vt-self.v
-        print("Error_v", error_v)
+        # Stampe sostituite dal log generale su run_simulation.py.
+        # print("Error_v", error_v)
         T= self.linearSpeedController.evaluate(delta_t=delta_t, _error= error_v)
-        print("Forza applicata T", T)
+        # print("Forza applicata T", T)
         #ackermannVehicle
         self.ackermann.evaluate(delta_t=delta_t, torque=T, steering_angle=alpha_c)
         
        
-
-

@@ -3,9 +3,10 @@ import json
 import math
 import sys
 from pathlib import Path
-import sys
 
-sys.path.append("../")
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT))
+sys.path.append(str(ROOT / "path_planning"))
 
 import cv2
 from matplotlib import pylab
@@ -30,7 +31,6 @@ from mission_types import MissionStateId
 def has_reached(xa,ya, target, soglia):
     x, y = target
     threshold =math.sqrt((xa-x)**2 +(ya-y)**2)
-    print("threshold attuale", threshold)
     return soglia > threshold
     
 
@@ -47,45 +47,59 @@ def main():
     dds.start()
     dds.subscribe(["tick", "TerrainHeight", "TerrainSlope"])
 
-    w = World(1500, 1500, 50) #100, se parto da 1000 ho 50 posizioni
-    #w.add_rectangle_obstacle(31, -11.5, 37, 12.5) #punti :31 -11.5, 37 -12.5
+    w = World(2000, 2000, 50) #100, se parto da 1000 ho 50 posizioni
+    w.add_rectangle_obstacle(575, 1550, 625, 1850) # ostacolo Godot x=31..37, z=-11.5..-12.5
+    w.add_rectangle_obstacle(0, 1362.5, 12.5, 1387.5) # pacco in zoneB, ingombro Godot x=27.25..27.75, z=-0.25..0.25
     nf1 = NF1Planner(w)
-    path_BA= nf1.plan((50,50),(50, 1375)) ##0 0 
+    path_BA_map = nf1.plan((50,50),(50, 1375)) ##0 0 
+    path_BA = []
+    for x, y in path_BA_map:
+        wx, wy = w.to_world(x, y)
+        path_BA.append((wx / w.scale, -wy / w.scale))
     
     #img = nf1.world_to_image()
     #cv2.imshow("world", img)
     #cv2.waitKey(0)
-    print(path_BA)
+    print("path_BA:", path_BA)
     threashold = 1.50
     
 
     mission = MissionStateId.DRIVE_TO_B
     
     ackermann = AckermannController()
-    t = Time()
-    t.start()
-    index = 5
+    index = 0
     step = 0
-    while t.get() < 50:  
-        delta_t =  dds.read("tick") 
-        print(f"delta_t ricevuto: {delta_t}")
+    elapsed_time = 0.0
+    target = path_BA[index]
+    ackermann.start_motion(target)
 
-        print(ackermann.pose[0], ackermann.pose[1], path_BA[index])
-        path_BA[index]= (0,-20)
+    while elapsed_time < 50:
+        # usiamo wait per evitare letture none
+        delta_t = dds.wait("tick")
+        elapsed_time += delta_t
+        
         if mission is MissionStateId.DRIVE_TO_B:
             ##mettere che lo start è la pose dove mi trovo, quando arrivo alla soglia devo aumentare
-            
-            ackermann.start_motion(path_BA[index])
             ackermann.evaluate(delta_t)
+            distance = math.sqrt((ackermann.pose[0]-target[0])**2 +(ackermann.pose[1]-target[1])**2)
+            if step % 30 == 0:
+                print("step", step, "target", index, target, "pose", ackermann.pose, "distance", distance)
             ##distanza
-            if has_reached(ackermann.pose[0], ackermann.pose[1], path_BA[index], threashold):
+            if has_reached(ackermann.pose[0], ackermann.pose[1], target, threashold):
                 index= index+1
                 print("ha raggiunto l'obbiettivo")
+                if index >= len(path_BA):
+                    mission = MissionStateId.DONE
+                    print("missione completata")
+                    break
+                target = path_BA[index]
+                ackermann.start_motion(target)
 
 
         ##else:
         #    return
         publish_state(dds, ackermann)
+        step += 1
 
 
 
