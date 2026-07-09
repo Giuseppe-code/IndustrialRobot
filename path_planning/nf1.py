@@ -79,8 +79,7 @@ class NF1Planner:
         self.path = path
 
         return path
-
-
+    
     # function replaced with a bfs version
     def __mark_all(self, point, value):
         queue = deque()
@@ -98,7 +97,7 @@ class NF1Planner:
                 continue
 
             self.mark_map[current] = current_value
-
+            
             neighbors = [
                 self.__add(current, (0, -1)),
                 self.__add(current, (0, 1)),
@@ -109,6 +108,7 @@ class NF1Planner:
             for neighbor in neighbors:
                 if neighbor is not None:
                     queue.append((neighbor, current_value + 1))
+                    
 
     def __add(self, pt, incr):
         x = pt[0] + incr[0]
@@ -117,6 +117,7 @@ class NF1Planner:
             return None
         else:
             return (x,y)
+    
 
 
 if __name__ == "__main__":
