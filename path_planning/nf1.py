@@ -2,9 +2,10 @@
 # nf1.py
 #
 
-from .world import *
+from world import *
 import numpy as np
 import cv2
+from collections import deque # used for bfs
 
 class NF1Planner:
 
@@ -48,7 +49,7 @@ class NF1Planner:
     def plan(self, start, end):
         start = self.world.to_map(*start)
         end = self.world.to_map(*end)
-
+# replacing recursion construction of the map with a bfs for solving recursion call limit
         self.__mark_all(end, 0)
 
         corners = [ (1,0), (-1,0), (0,1), (0,-1), (1,1), (1,-1), (-1,1), (-1,-1) ]
@@ -80,32 +81,34 @@ class NF1Planner:
         return path
 
 
-
+    # function replaced with a bfs version
     def __mark_all(self, point, value):
-        v = self.mark_map[point]
-        if v == -1:
-            return
+        queue = deque()
+        queue.append((point, value))
 
-        go = False
-        if v is None:
-            go = True
-        elif value < v:
-            go = True
+        while queue:
+            current, current_value = queue.popleft()
 
-        if go:
-            self.mark_map[point] = value
-            n = self.__add(point, (0, -1))
-            s = self.__add(point, (0, 1))
-            e = self.__add(point, (1, 0))
-            w = self.__add(point, (-1, 0))
-            if n is not None:
-                self.__mark_all(n, value + 1)
-            if s is not None:
-                self.__mark_all(s, value + 1)
-            if e is not None:
-                self.__mark_all(e, value + 1)
-            if w is not None:
-                self.__mark_all(w, value + 1)
+            v = self.mark_map[current]
+
+            if v == -1:
+                continue
+
+            if v is not None and current_value >= v:
+                continue
+
+            self.mark_map[current] = current_value
+
+            neighbors = [
+                self.__add(current, (0, -1)),
+                self.__add(current, (0, 1)),
+                self.__add(current, (1, 0)),
+                self.__add(current, (-1, 0)),
+            ]
+
+            for neighbor in neighbors:
+                if neighbor is not None:
+                    queue.append((neighbor, current_value + 1))
 
     def __add(self, pt, incr):
         x = pt[0] + incr[0]
@@ -121,7 +124,7 @@ if __name__ == "__main__":
     w.add_rectangle_obstacle(500, 500, 700, 600)
     w.add_rectangle_obstacle(200, 200, 300, 800)
     nf1 = NF1Planner(w)
-    nf1.plan((500,500),(900,900))
+    nf1.plan((500,200),(900,900))
     img = nf1.world_to_image()
     cv2.imshow("world", img)
     cv2.waitKey(0)
