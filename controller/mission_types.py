@@ -1,16 +1,14 @@
-from dataclasses import dataclass
-from enum import Enum
+from enum import IntEnum
 
 
-class MissionStateId(Enum):
-    DRIVE_TO_B = "DRIVE_TO_B"
-    PICK_APPROACH = "PICK_APPROACH"
-    VISION_PICK = "VISION_PICK"
-    PICK_DOWN = "PICK_DOWN"
-    PICK_LIFT_SAFE = "PICK_LIFT_SAFE"
-    DRIVE_TO_UNLOAD = "DRIVE_TO_UNLOAD"
-    DROP_APPROACH = "DROP_APPROACH"
-    DROP_DOWN = "DROP_DOWN"
-    DROP_LIFT_SAFE = "DROP_LIFT_SAFE"
-    DONE = "DONE"
-
+class MissionStateId(IntEnum):
+    DRIVE_TO_B = 0
+    PICK_APPROACH = 1
+    VISION_PICK = 2
+    PICK_DOWN = 3
+    PICK_LIFT_SAFE = 4
+    DRIVE_TO_UNLOAD = 5
+    DROP_APPROACH = 6
+    DROP_DOWN = 7
+    DROP_LIFT_SAFE = 8
+    DONE = 9

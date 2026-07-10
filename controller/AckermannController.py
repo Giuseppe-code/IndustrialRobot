@@ -7,8 +7,10 @@ import math
 
 class AckermannController:
     def __init__(self):
+        self.base_mass = 5.0
+        self.payload_mass = 0.0
         self.ackermann = AckermannSteering(
-            _mass = 5,
+            _mass = self.base_mass,
             _lin_friction = 0.8,
             _r_traction = 0.5,
             _lateral_wheelbase= 1)
@@ -27,6 +29,16 @@ class AckermannController:
         self.linearSpeedController = PID_Controller(2, 0, 0, 7)
         self.pose=[0,0,0]
         self.v=0
+
+    def set_pose(self, x, y, theta):
+        self.pose = [x, y, theta]
+        self.ackermann.x = x
+        self.ackermann.y = y
+        self.ackermann.theta = theta
+
+    def set_payload_mass(self, payload_mass):
+        self.payload_mass = max(0.0, payload_mass)
+        self.ackermann.M = self.base_mass + self.payload_mass
     
     def start_motion(self, end):
         self.trajectory.start_motion((self.pose[0], self.pose[1]),end)

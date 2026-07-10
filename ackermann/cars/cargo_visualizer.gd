@@ -44,7 +44,7 @@ func _process(_delta: float) -> void:
 		carried_package.visible = true
 		delivered_package.visible = false
 		if vehicle != null:
-			carried_package.global_position = vehicle.global_position + carried_offset
+			carried_package.global_position = vehicle.to_global(carried_offset)
 			carried_package.global_rotation = vehicle.global_rotation
 		return
 

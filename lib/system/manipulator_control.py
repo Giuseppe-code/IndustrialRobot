@@ -5,6 +5,7 @@
 
 from lib.system.controllers import *
 from lib.system.manipulator import *
+from lib.utils.geometry import normalize_angle
 
 class FourJointsManipulatorControl:
 
@@ -45,11 +46,16 @@ class FourJointsManipulatorControl:
         return True
 
     def evaluate(self, delta_t):
+        # Vicino a pi scegliamo sempre la rotazione piu' breve.
+        error_0 = normalize_angle(self.theta0 - self.arm.element_0.theta)
+        error_1 = normalize_angle(self.theta1 - self.arm.element_1.theta)
+        error_2 = normalize_angle(self.theta2 - self.arm.element_2.theta)
+        error_3 = normalize_angle(self.theta3 - self.arm.element_3.theta)
 
-        self.wref_0 = self.pos_control_0.evaluate(delta_t, self.theta0 - self.arm.element_0.theta)
-        self.wref_1 = self.pos_control_1.evaluate(delta_t, self.theta1 - self.arm.element_1.theta)
-        self.wref_2 = self.pos_control_2.evaluate(delta_t, self.theta2 - self.arm.element_2.theta)
-        self.wref_3 = self.pos_control_3.evaluate(delta_t, self.theta3 - self.arm.element_3.theta)
+        self.wref_0 = self.pos_control_0.evaluate(delta_t, error_0)
+        self.wref_1 = self.pos_control_1.evaluate(delta_t, error_1)
+        self.wref_2 = self.pos_control_2.evaluate(delta_t, error_2)
+        self.wref_3 = self.pos_control_3.evaluate(delta_t, error_3)
 
         torque0 = self.speed_control_0.evaluate(delta_t, self.wref_0 - self.arm.element_0.w)
         torque1 = self.speed_control_1.evaluate(delta_t, self.wref_1 - self.arm.element_1.w)
@@ -63,4 +69,3 @@ class FourJointsManipulatorControl:
 
     def get_pose(self):
         return self.arm.get_pose()
-

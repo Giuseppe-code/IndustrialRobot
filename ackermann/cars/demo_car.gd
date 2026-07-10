@@ -42,7 +42,6 @@ func _physics_process(_delta: float) -> void:
 
 	measured_surface_height = terrain_height
 	var relative_height: float = terrain_height - terrain_reference_height
-	print("relative_height: ", relative_height)
 	var terrain_slope := 0.0
 	if ahead_height != null:
 		terrain_slope = atan2(ahead_height - terrain_height, terrain_probe_distance)

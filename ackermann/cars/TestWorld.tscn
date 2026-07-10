@@ -120,6 +120,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -0.2)
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
 current_pose_path = NodePath(".")
 camera_view_path = NodePath("../../../ArmCameraView")
+publish_tick = false
 
 [node name="Pose" type="Label" parent="." unique_id=178613827]
 offset_right = 820.0
@@ -191,6 +192,8 @@ mesh = SubResource("PlaneMesh_red_unload")
 shape = SubResource("BoxShape3D_s5t8w")
 
 [node name="ArmCameraViewport" type="SubViewport" parent="." unique_id=760377737]
+size = Vector2i(512, 512)
+render_target_update_mode = 4
 
 [node name="ArmPreviewCamera" type="Camera3D" parent="ArmCameraViewport" unique_id=365728655]
 current = true

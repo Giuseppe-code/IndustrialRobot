@@ -27,6 +27,8 @@ var theta_2_box: TextEdit
 var theta_3_box: TextEdit
 var current_pose: Label
 var camera_view: TextureRect
+var camera_capture_pending := false
+var camera_capture_delay := 0
 
 
 func _ready() -> void:
@@ -55,7 +57,7 @@ func _process(delta: float) -> void:
 		dds.call("publish", "tick", DDS_TYPE_FLOAT, delta)
 
 	if publish_camera_on_request:
-		_send_requested_camera_frame()
+		_queue_requested_camera_frame()
 
 	var t0 = dds.call("read", "theta0")
 	var t1 = dds.call("read", "theta1")
@@ -89,7 +91,13 @@ func _process(delta: float) -> void:
 		current_pose.text = "X=%.3f   Y=%.3f   Z=%.3f   A=%.2f" % [x, y, z, rad_to_deg(float(a))]
 
 
-func _send_requested_camera_frame() -> void:
+func _queue_requested_camera_frame() -> void:
+	if camera_capture_pending:
+		camera_capture_delay -= 1
+		if camera_capture_delay <= 0:
+			_send_camera_frame()
+		return
+
 	var read_image = dds.call("read", "read_image")
 	if read_image == null or int(read_image) != 1:
 		return
@@ -97,15 +105,22 @@ func _send_requested_camera_frame() -> void:
 	var subscribed_vars = dds.get("subscribed_vars")
 	if subscribed_vars is Dictionary:
 		subscribed_vars["read_image"] = 0
+	camera_capture_pending = true
+	camera_capture_delay = 2
 
+
+func _send_camera_frame() -> void:
 	if camera_sender == null or camera_view == null or camera_view.texture == null:
+		camera_capture_pending = false
 		return
 
 	var image = camera_view.texture.get_image()
 	if image == null:
+		camera_capture_pending = false
 		return
 
 	camera_sender.call("send_data", image.get_data())
+	camera_capture_pending = false
 
 
 func _get_optional_node(path: NodePath) -> Node:

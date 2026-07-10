@@ -12,14 +12,27 @@ const PACKAGE_COLORS := [
 ]
 
 var rng := RandomNumberGenerator.new()
+var package_body: StaticBody3D
+var package_picked := false
 
 func _ready() -> void:
 	rng.randomize()
+	DDS.subscribe("PayloadMass")
 	_spawn_package()
+
+func _process(_delta: float) -> void:
+	if package_body == null:
+		return
+	var payload_mass = DDS.read("PayloadMass")
+	var loaded := payload_mass != null and float(payload_mass) > 0.01
+	if loaded:
+		package_picked = true
+	package_body.visible = not package_picked
+	package_body.collision_layer = 0 if package_picked else package_collision_layer
 
 func _spawn_package() -> void:
 	var center_y := package_size.y * 0.5 + top_clearance
-	var package_body := StaticBody3D.new()
+	package_body = StaticBody3D.new()
 	package_body.name = "Package"
 	package_body.collision_layer = package_collision_layer
 	package_body.collision_mask = package_collision_mask
