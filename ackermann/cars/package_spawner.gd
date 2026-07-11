@@ -5,11 +5,14 @@ extends Node3D
 @export var top_clearance := 0.005
 @export var package_collision_layer := 8
 @export var package_collision_mask := 1
+@export_range(0, 2) var forced_color_code := 0
 
-const PACKAGE_COLORS := [
-	#Color(0.04, 0.20, 0.85, 1.0),
-	Color(0.987, 0.143, 0.0, 1.0),
-]
+const BLUE_CODE := 1
+const RED_CODE := 2
+const PACKAGE_COLORS := {
+	BLUE_CODE: Color(0.04, 0.20, 0.85, 1.0),
+	RED_CODE: Color(0.987, 0.143, 0.0, 1.0),
+}
 
 var rng := RandomNumberGenerator.new()
 var package_body: StaticBody3D
@@ -55,6 +58,15 @@ func _spawn_package() -> void:
 
 func _package_material() -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
-	material.albedo_color = PACKAGE_COLORS[rng.randi_range(0, PACKAGE_COLORS.size() - 1)]
+	material.albedo_color = PACKAGE_COLORS[_selected_color_code()]
 	material.roughness = 0.65
 	return material
+
+func _selected_color_code() -> int:
+	# L'override d'ambiente rende ripetibili i test senza alterare la scena.
+	var environment_code := OS.get_environment("PACKAGE_COLOR_CODE")
+	if environment_code == "1" or environment_code == "2":
+		return int(environment_code)
+	if forced_color_code == BLUE_CODE or forced_color_code == RED_CODE:
+		return forced_color_code
+	return rng.randi_range(BLUE_CODE, RED_CODE)

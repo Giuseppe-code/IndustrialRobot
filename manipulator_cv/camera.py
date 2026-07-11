@@ -15,6 +15,8 @@ class Camera:
         self.reader = ImageReader(self.host, self.port)
 
     def connect(self):
+        if self.reader.sd.fileno() == -1:
+            self.reader = ImageReader(self.host, self.port)
         self.reader.sd.settimeout(3.0)
         self.reader.connect()
 

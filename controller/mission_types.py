@@ -12,3 +12,21 @@ class MissionStateId(IntEnum):
     DROP_DOWN = 7
     DROP_LIFT_SAFE = 8
     DONE = 9
+
+
+class CargoColorCode(IntEnum):
+    UNKNOWN = 0
+    BLUE = 1
+    RED = 2
+
+
+class UnloadZoneCode(IntEnum):
+    UNKNOWN = 0
+    A = 1
+    C = 3
+
+
+UNLOAD_ZONE_BY_COLOR = {
+    CargoColorCode.BLUE: UnloadZoneCode.A,
+    CargoColorCode.RED: UnloadZoneCode.C,
+}
