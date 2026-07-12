@@ -17,15 +17,12 @@ class ImageReader:
         self.sd.connect( (self.host, self.port) )
 
     def read_image(self, _width, _height):
-        image_data = bytearray()
+        image_data = bytes()
         max_len = _width * _height * 3
         max_len += 4
         while len(image_data) < max_len:
             to_read = max_len - len(image_data)
-            chunk = self.sd.recv(to_read)
-            if not chunk:
-                raise ConnectionError("Camera stream closed before a complete frame")
-            image_data.extend(chunk)
+            image_data += self.sd.recv(to_read)
         image_data = image_data[4:]
         image = np.frombuffer(image_data, np.uint8).reshape( _height, _width, 3 )
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
