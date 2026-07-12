@@ -18,11 +18,5 @@ func _process(delta: float) -> void:
 			connection_list.push_back(packet_streamer)
 		
 func send_data(packet : PackedByteArray):
-	for index in range(connection_list.size() - 1, -1, -1):
-		var packet_streamer: PacketPeerStream = connection_list[index]
-		var connection := packet_streamer.get_stream_peer() as StreamPeerTCP
-		connection.poll()
-		if connection.get_status() != StreamPeerTCP.STATUS_CONNECTED:
-			connection_list.remove_at(index)
-			continue
-		packet_streamer.put_packet(packet)
+	for c : PacketPeerStream in connection_list:
+		c.put_packet(packet)

@@ -10,8 +10,6 @@ func _process(_delta: float) -> void:
 	if source_camera == null:
 		return
 
-	# La catena del braccio cambia nello stesso frame: aggiorniamo la posa prima di copiarla.
-	source_camera.force_update_transform()
 	global_transform = source_camera.global_transform
 	fov = source_camera.fov
 	near = source_camera.near

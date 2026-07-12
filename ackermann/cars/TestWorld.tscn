@@ -25,6 +25,7 @@ material = SubResource("1")
 size = Vector2(30, 50)
 
 [sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_4ksr8"]
+points = PackedVector3Array(-25.1366, 0.136612, -25.1366, -25.1366, 0.136612, 25.1366, 25.1366, 0.136612, -25.1366, 25.1366, 0.136612, 25.1366)
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_5qabv"]
 
@@ -192,8 +193,6 @@ mesh = SubResource("PlaneMesh_red_unload")
 shape = SubResource("BoxShape3D_s5t8w")
 
 [node name="ArmCameraViewport" type="SubViewport" parent="." unique_id=760377737]
-size = Vector2i(512, 512)
-render_target_update_mode = 4
 
 [node name="ArmPreviewCamera" type="Camera3D" parent="ArmCameraViewport" unique_id=365728655]
 current = true
@@ -217,8 +216,5 @@ stretch_mode = 5
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=435463921]
 transform = Transform3D(-0.06986089, 0, 5.4745913, 0, 3.2489996, 0, -0.9975567, 0, -0.3833965, 34, 2.5, -12)
 mesh = SubResource("BoxMesh_4ksr8")
-
-[node name="Camera3D2" type="Camera3D" parent="." unique_id=1162746672]
-transform = Transform3D(-0.9746794, 0.21783772, -0.050464254, -0.07047461, -0.08508552, 0.9938781, 0.21221042, 0.97226906, 0.09828315, 28.133997, 9.037458, -1.1300068)
 
 [editable path="DemoCar/ArmMount/RobotArm"]
