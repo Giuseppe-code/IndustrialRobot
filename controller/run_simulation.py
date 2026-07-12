@@ -26,12 +26,13 @@ from path_planning.world import World
 
 ARM_ORIENTATION = math.radians(-90)
 ARM_APPROACH_TARGET = (-0.8, 0.0, 0.75)
-VISION_SEARCH_TARGETS = (
-    ARM_APPROACH_TARGET,
-    (-0.6, 0.0, 0.75),
-    (-0.7, -0.2, 0.75),
-    (-0.7, 0.2, 0.75),
-)
+# visual scan  multiposa temporaneamente disabilitata.
+# VISION_SEARCH_TARGETS = (
+#     ARM_APPROACH_TARGET,
+#     (-0.6, 0.0, 0.75),
+#     (-0.7, -0.2, 0.75),
+#     (-0.7, 0.2, 0.75),
+# )
 PICK_HEIGHT = 0.08
 DROP_HEIGHT = 0.08
 PACKAGE_MASS_KG = 2.0
@@ -199,10 +200,8 @@ def main():
         target = path[waypoint_index]
         pick_xy = None
         missing_frames = 0
-        camera_warmup_frames = 0
         arm_settle_frames = 0
-        vision_pose_index = 0
-        vision_target = VISION_SEARCH_TARGETS[vision_pose_index]
+        vision_target = ARM_APPROACH_TARGET
         step = 0
         elapsed_time = 0.0
 
@@ -257,83 +256,78 @@ def main():
 
                 # Lasciamo a Godot il tempo di applicare gli ultimi angoli DDS.
                 if arm_settle_frames >= 60:
-                    camera_warmup_frames = 3
                     visual_picker.reset()
                     mission = MissionStateId.VISION_PICK
                     pose = tuple(round(value, 3) for value in arm.get_pose())
                     print("VISION_PICK: ricerca e centraggio, posa braccio", pose)
 
             elif mission is MissionStateId.VISION_PICK:
-                if camera_warmup_frames > 0:
-                    # Scartiamo le prime immagini, che possono riferirsi alla posa precedente.
-                    dds.publish("read_image", 1, DDS.DDS_TYPE_INT)
-                    camera.read()
-                    camera_warmup_frames -= 1
-                else:
-                    dds.publish("read_image", 1, DDS.DDS_TYPE_INT)
-                    image = camera.read()
-                    result = visual_picker.evaluate(image, arm.get_pose(), delta_t)
+                dds.publish("read_image", 1, DDS.DDS_TYPE_INT)
+                image = camera.read()
+                result = visual_picker.evaluate(image, arm.get_pose(), delta_t)
 
-                    if result.found:
-                        missing_frames = 0
-                        if not arm.set_target(*result.target, ARM_ORIENTATION):
-                            if step % 30 == 0:
-                                print(
-                                    "VISION_PICK: correzione scartata, "
-                                    "posa non raggiungibile"
-                                )
-                        elif step % 15 == 0:
-                            print(
-                                f"VISION_PICK: {result.color.name}, "
-                                f"centro {result.centroid}, errore {result.error}"
-                            )
-
-                        if result.locked:
-                            cargo_color = result.color
-                            unload_zone = UNLOAD_ZONE_BY_COLOR[cargo_color]
-                            current_x, current_y, _, _ = arm.get_pose()
-                            pick_xy = (current_x, current_y)
-                            down_target = (*pick_xy, PICK_HEIGHT)
-                            if not arm.set_target(*down_target, ARM_ORIENTATION):
-                                raise RuntimeError(
-                                    "La quota di presa non e' raggiungibile"
-                                )
-                            camera.close()
-                            camera_connected = False
-                            mission = MissionStateId.PICK_DOWN
-                            print(
-                                f"PICK_DOWN: pacco {cargo_color.name}, "
-                                f"destinazione {unload_zone.name}"
-                            )
-                    else:
-                        missing_frames += 1
+                if result.found:
+                    missing_frames = 0
+                    if not arm.set_target(*result.target, ARM_ORIENTATION):
                         if step % 30 == 0:
-                            print("VISION_PICK: pacco non visibile")
-                        if missing_frames >= 30:
-                            vision_pose_index = (
-                                vision_pose_index + 1
-                            ) % len(VISION_SEARCH_TARGETS)
-                            vision_target = VISION_SEARCH_TARGETS[vision_pose_index]
-                            if not arm.set_target(
-                                *vision_target,
-                                ARM_ORIENTATION,
-                            ):
-                                raise RuntimeError(
-                                    "La posa di ricerca non e' raggiungibile"
-                                )
-                            arm_settle_frames = 0
-                            missing_frames = 0
-                            mission = MissionStateId.PICK_APPROACH
                             print(
-                                "VISION_PICK: nuova posa di ricerca "
-                                f"{vision_pose_index + 1}/"
-                                f"{len(VISION_SEARCH_TARGETS)}"
+                                "VISION_PICK: correzione scartata, "
+                                "posa non raggiungibile"
                             )
+                    elif step % 15 == 0:
+                        print(
+                            f"VISION_PICK: {result.color.name}, "
+                            f"centro {result.centroid}, errore {result.error}"
+                        )
 
-                    if args.show_camera:
-                        cv2.imshow("camera", image)
-                        cv2.imshow("binary_image", result.binary_image)
-                        cv2.waitKey(1)
+                    if result.locked:
+                        cargo_color = result.color
+                        unload_zone = UNLOAD_ZONE_BY_COLOR[cargo_color]
+                        current_x, current_y, _, _ = arm.get_pose()
+                        pick_xy = (current_x, current_y)
+                        down_target = (*pick_xy, PICK_HEIGHT)
+                        if not arm.set_target(*down_target, ARM_ORIENTATION):
+                            raise RuntimeError(
+                                "La quota di presa non e' raggiungibile"
+                            )
+                        camera.close()
+                        camera_connected = False
+                        mission = MissionStateId.PICK_DOWN
+                        print(
+                            f"PICK_DOWN: pacco {cargo_color.name}, "
+                            f"destinazione {unload_zone.name}"
+                        )
+                else:
+                    missing_frames += 1
+                    if step % 30 == 0:
+                        print("VISION_PICK: pacco non visibile")
+
+                    # Cambio posa di visual scan dopo 30 frame, 4 pose circolari  temporaneamente disabilitato.
+                    # if missing_frames >= 30:
+                    #     vision_pose_index = (
+                    #         vision_pose_index + 1
+                    #     ) % len(VISION_SEARCH_TARGETS)
+                    #     vision_target = VISION_SEARCH_TARGETS[vision_pose_index]
+                    #     if not arm.set_target(
+                    #         *vision_target,
+                    #         ARM_ORIENTATION,
+                    #     ):
+                    #         raise RuntimeError(
+                    #             "La posa di ricerca non e' raggiungibile"
+                    #         )
+                    #     arm_settle_frames = 0
+                    #     missing_frames = 0
+                    #     mission = MissionStateId.PICK_APPROACH
+                    #     print(
+                    #         "VISION_PICK: nuova posa di ricerca "
+                    #         f"{vision_pose_index + 1}/"
+                    #         f"{len(VISION_SEARCH_TARGETS)}"
+                    #     )
+
+                if args.show_camera:
+                    cv2.imshow("camera", image)
+                    cv2.imshow("binary_image", result.binary_image)
+                    cv2.waitKey(1)
 
             elif mission is MissionStateId.PICK_DOWN:
                 down_target = (*pick_xy, PICK_HEIGHT)
