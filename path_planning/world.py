@@ -10,7 +10,6 @@ class World:
         self.scale = scale
         self.w = int(self.x_size / scale) # num celle in larghezza
         self.h = int(self.y_size / scale) # num celle in altezza
-        self.margin = 0
 
         self.world_map = {}
         for y in range(self.h):
@@ -39,10 +38,6 @@ class World:
         return int(x * self.scale + self.scale/2), int(y * self.scale + self.scale/2)
 
     def add_rectangle_obstacle(self, x0, y0, x1, y1):
-        x0= x0+ self.margin
-        y0=y0+ self.margin
-        x1= x1+self.margin
-        y1=y1+self.margin
         (x0, y0) = self.to_map(x0, y0)
         (x1, y1) = self.to_map(x1, y1)
 

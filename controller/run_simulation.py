@@ -38,13 +38,13 @@ DROP_HEIGHT = 0.08
 PACKAGE_MASS_KG = 2.0
 WAYPOINT_THRESHOLD = 1.5
 FINAL_THRESHOLD = 0.18
-UNLOAD_FINAL_THRESHOLD = 1.25
+UNLOAD_FINAL_THRESHOLD = 1
 
 PICK_START_MAP = (50, 50)
 PICK_TARGET_MAP = (175, 1375)
 UNLOAD_TARGET_MAP = {
-    UnloadZoneCode.A: (75, 75),
-    UnloadZoneCode.C: (925, 2025),
+    UnloadZoneCode.A: (25, 50),
+    UnloadZoneCode.C: (925, 2025),#925, 2025 #900, 2050
 }
 
 
@@ -54,8 +54,8 @@ def has_reached(x, y, target, threshold):
 
 
 def arm_has_reached(
-    arm,
-    target,
+    arm : FourJointsManipulatorControl,
+    target: tuple[float, float, float],
     position_threshold=0.025,
     angle_threshold=math.radians(3),
 ):
@@ -74,13 +74,13 @@ def arm_has_reached(
 
 
 def publish_state(
-    dds,
-    ackermann,
-    arm,
-    mission,
-    payload_mass,
-    cargo_color,
-    unload_zone,
+    dds: DDS,
+    ackermann : AckermannController,
+    arm : FourJointsManipulatorControl,
+    mission: MissionStateId,
+    payload_mass: float,
+    cargo_color: CargoColorCode,
+    unload_zone: UnloadZoneCode,
 ):
     vehicle_values = zip(("X", "Y", "Theta"), ackermann.pose)
     arm_values = zip(
@@ -100,18 +100,22 @@ def publish_state(
 
 def build_world():
     world = World(2500, 2500, 50)
-    world.add_rectangle_obstacle(575, 1550, 625, 1850)
-    world.add_rectangle_obstacle(0, 1362.5, 12.5, 1387.5)
+    world.add_rectangle_obstacle(525, 1500, 650, 1900) #rettangolo 575, 1550, 625, 1850 (12,34) larghezza (1,5.488), + 25 a l for margin
+    world.add_rectangle_obstacle(37.5, 1362.5, 62.5, 1387.5) #pacco pos (1, 27,5), larghezza 0,5
     return world
 
 
 def build_path(start_map, target_map):
     world = build_world()
-    path_map = NF1Planner(world).plan(start_map, target_map)
+    path_map = NF1Planner(world)
+    path_map=path_map.plan(start_map, target_map)
+    #img = path_map.world_to_image()
+    #cv2.imshow("world", img)
+    #cv2.waitKey(0)
     path = []
     for x, y in path_map:
         world_x, world_y = world.to_world(x, y)
-        path.append((world_x / world.scale, -world_y / world.scale))
+        path.append((world_x / world.scale, -world_y / world.scale)) ##offset to angle
     return path
 
 
@@ -125,11 +129,11 @@ def build_path_to_unload_zone(unload_zone):
 
 
 def follow_path(
-    ackermann,
-    delta_t,
-    path,
-    index,
-    target,
+    ackermann : AckermannController,
+    delta_t : float,
+    path : list[tuple[int, int]],
+    index : int,
+    target: tuple[int,int],
     step,
     label,
     final_threshold=FINAL_THRESHOLD,
@@ -216,7 +220,6 @@ def main():
             cargo_color,
             unload_zone,
         )
-
         while elapsed_time < args.max_time:
             delta_t = dds.wait("tick")
             if delta_t is None or delta_t <= 0:

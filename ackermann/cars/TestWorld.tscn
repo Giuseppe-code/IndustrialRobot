@@ -205,16 +205,16 @@ visibility_layer = 1023
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -221.0
+offset_left = -367.0
 offset_right = -2.0
-offset_bottom = 212.0
+offset_bottom = 344.0
 grow_horizontal = 0
 texture = SubResource("ViewportTexture_5qabv")
 expand_mode = 2
 stretch_mode = 5
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=435463921]
-transform = Transform3D(-0.06986089, 0, 5.4745913, 0, 3.2489996, 0, -0.9975567, 0, -0.3833965, 34, 2.5, -12)
+transform = Transform3D(-0.06986088, 0, 5.4745913, 0, 3.2489996, 0, -0.9975567, 0, -0.38339657, 34, 2.5, -12)
 mesh = SubResource("BoxMesh_4ksr8")
 
 [editable path="DemoCar/ArmMount/RobotArm"]
