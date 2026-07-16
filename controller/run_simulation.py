@@ -50,7 +50,7 @@ UNLOAD_TARGET_MAP = {
 
 def has_reached(x, y, target, threshold):
     target_x, target_y = target
-    return math.hypot(x - target_x, y - target_y) < threshold
+    return math.dist((x,y), (target_x,target_y)) < threshold
 
 
 def arm_has_reached(
@@ -61,11 +61,8 @@ def arm_has_reached(
 ):
     x, y, z, angle = arm.get_pose()
     target_x, target_y, target_z = target
-    distance = math.sqrt(
-        (x - target_x) ** 2
-        + (y - target_y) ** 2
-        + (z - target_z) ** 2
-    )
+    distance = math.dist((x,y,z), (target_x, target_y, target_z))
+
     angle_error = math.atan2(
         math.sin(angle - ARM_ORIENTATION),
         math.cos(angle - ARM_ORIENTATION),
@@ -120,7 +117,7 @@ def build_path(start_map, target_map):
 
 
 def build_path_to_pick_zone():
-    # Il punto resta allineato a B, ma il carrello si ferma davanti al pacco.
+    # Il punto resta allineato a B, ma il carrello si ferma accanto al pacco.
     return build_path(PICK_START_MAP, PICK_TARGET_MAP)
 
 
@@ -134,14 +131,14 @@ def follow_path(
     path : list[tuple[int, int]],
     index : int,
     target: tuple[int,int],
-    step,
-    label,
-    final_threshold=FINAL_THRESHOLD,
+    step: int,
+    label: str,
+    final_threshold=FINAL_THRESHOLD,##final_threshold o unload_final_threshold
 ):
     ackermann.evaluate(delta_t)
     is_last = index == len(path) - 1
     threshold = final_threshold if is_last else WAYPOINT_THRESHOLD
-
+    
     if step % 60 == 0:
         distance = math.dist(ackermann.pose[:2], target)
         print(f"{label}: punto {index + 1}/{len(path)}, distanza {distance:.2f} m")
@@ -152,6 +149,7 @@ def follow_path(
     if is_last:
         return index, target, True
 
+    #ha raggiunto la cella, ora deve puntare alla prossima 
     index += 1
     target = path[index]
     ackermann.start_motion(target)
@@ -198,7 +196,7 @@ def main():
 
         mission = MissionStateId.DRIVE_TO_B
         cargo_color = CargoColorCode.UNKNOWN
-        unload_zone = UnloadZoneCode.UNKNOWN
+        unload_zone = UnloadZoneCode.UNKNOWN #A o C
         payload_mass = 0.0
         waypoint_index = 0
         target = path[waypoint_index]
@@ -253,12 +251,6 @@ def main():
                     position_threshold=0.003,
                     angle_threshold=math.radians(0.25),
                 ):
-                    arm_settle_frames += 1
-                else:
-                    arm_settle_frames = 0
-
-                # Lasciamo a Godot il tempo di applicare gli ultimi angoli DDS.
-                if arm_settle_frames >= 60:
                     visual_picker.reset()
                     mission = MissionStateId.VISION_PICK
                     pose = tuple(round(value, 3) for value in arm.get_pose())

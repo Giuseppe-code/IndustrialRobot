@@ -3,3 +3,4 @@ res://cars/TestWorld.tscn
 res://cars/package_spawner.gd
 res://cars/DemoCar.tscn
 res://cars/demo_car.gd
+res://arm4/robot_arm.gd
