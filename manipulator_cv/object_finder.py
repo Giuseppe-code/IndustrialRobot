@@ -20,21 +20,6 @@ class ObjectFinder:
         self.border_margin = border_margin
         self.last_area = 0.0
 
-    def _is_valid_contour(self, contour, image_shape):
-        height, width = image_shape[:2]
-        area = cv2.contourArea(contour)
-        if area < self.min_area or area > width * height * self.max_area_ratio:
-            return False
-
-        x, y, contour_width, contour_height = cv2.boundingRect(contour)
-        # Il pacco e' interno all'immagine: un contorno sul bordo e' lo sfondo.
-        return (
-            x > self.border_margin
-            and y > self.border_margin
-            and x + contour_width < width - self.border_margin
-            and y + contour_height < height - self.border_margin
-        )
-
     def find(self, image):
         binary_image = cv2.inRange(
             image, self.lower_limit, self.higher_limit
@@ -45,21 +30,20 @@ class ObjectFinder:
 
         cx = -1
         cy = -1
-        self.last_area = 0.0
-        valid_contours = [
-            contour
-            for contour in contours
-            if self._is_valid_contour(contour, image.shape)
-        ]
-        if valid_contours:
-            contour = max(valid_contours, key=cv2.contourArea)
-            area = cv2.contourArea(contour)
-            self.last_area = area
-            cv2.drawContours(image, [contour], -1, (255, 255, 255))
-            moments = cv2.moments(contour)
-            if moments["m00"] != 0:
-                cx = int(moments["m10"] / moments["m00"])
-                cy = int(moments["m01"] / moments["m00"])
-                cv2.circle(image, (cx, cy), 3, (0, 0, 0), -1)
+        
+        if len(contours) > 0:
+            cnt = max(contours, key=cv2.contourArea) #altrimenti può prendere anche una linea e provare a calcolare il centroide, a noi serve il centroide del pacco
+            cv2.drawContours(image, [cnt], -1,  (255, 255, 255))
+            M = cv2.moments(cnt)
+            if M['m00'] != 0:
+                # get the centroid of the contour
+                cx = int(M['m10']/M['m00'])
+                cy = int(M['m01']/M['m00'])
+
+                cv2.circle(image, (cx, cy), 3, (0,0,0), -1)
+        else:
+            print("nessun contorno trovato")
+            cx = -1
+            cy = -1
 
         return cx, cy, binary_image

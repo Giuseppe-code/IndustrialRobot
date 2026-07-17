@@ -55,22 +55,25 @@ class VisualPickController:
         self.locked_count = 0
         self.locked_color = CargoColorCode.UNKNOWN
 
-    def evaluate(self, image, current_pose, delta_t):
-        detections = []
-        binary_image = None
+    def check_color(self, image):
         for color, finder in self.object_finders.items():
-            cx, cy, color_mask = finder.find(image)
-            binary_image = (
-                color_mask
-                if binary_image is None
-                else cv2.bitwise_or(binary_image, color_mask)
-            )
+            cx, cy, binary_image = finder.find(image)
             if cx >= 0 and cy >= 0:
-                detections.append((finder.last_area, color, cx, cy))
+                print("Identificato il colore:", color)
 
+                self.locked_color=color
+                return color
+        print("VisualPickController: nessun colore identificato")
+        return None
+
+    def evaluate(self, image, current_pose, delta_t, color_finded : CargoColorCode):
+        binary_image = None
+        cx, cy, binary_image = self.object_finders[color_finded].find(image)
+        
         x, y, _, _ = current_pose
 
-        if not detections:
+        #print("cx", cx, "cy", cy)
+        if cx<=-1 or cy <=-1:
             self.locked_count = 0
             self.locked_color = CargoColorCode.UNKNOWN
             return VisualPickResult(
@@ -83,21 +86,16 @@ class VisualPickController:
                 binary_image,
             )
 
-        _, color, cx, cy = max(detections, key=lambda detection: detection[0])
-
         error_x = self.width // 2 - cx
         error_y = self.height // 2 - cy
         centered = (
             abs(error_x) <= self.tolerance_px
             and abs(error_y) <= self.tolerance_px
         )
-        if centered and color == self.locked_color:
+        if centered:
             self.locked_count += 1
-        elif centered:
-            self.locked_color = color
-            self.locked_count = 1
+            print("self.locked_count", self.locked_count)
         else:
-            self.locked_color = color
             self.locked_count = 0
 
         correction_x = self.x_controller.evaluate(delta_t, error_x)
@@ -109,7 +107,7 @@ class VisualPickController:
         return VisualPickResult(
             True,
             self.locked_count >= self.lock_frames,
-            color,
+            color_finded,
             (cx, cy),
             (error_x, error_y),
             (target_x, target_y, self.target_height),

@@ -36,14 +36,14 @@ ARM_APPROACH_TARGET = (-0.8, 0.0, 0.75)
 PICK_HEIGHT = 0.08
 DROP_HEIGHT = 0.08
 PACKAGE_MASS_KG = 2.0
-WAYPOINT_THRESHOLD = 1.5
+WAYPOINT_THRESHOLD = 1.3
 FINAL_THRESHOLD = 0.18
 UNLOAD_FINAL_THRESHOLD = 1
 
 PICK_START_MAP = (50, 50)
 PICK_TARGET_MAP = (175, 1375)
 UNLOAD_TARGET_MAP = {
-    UnloadZoneCode.A: (25, 50),
+    UnloadZoneCode.A: (50, 50),
     UnloadZoneCode.C: (925, 2025),#925, 2025 #900, 2050
 }
 
@@ -97,10 +97,9 @@ def publish_state(
 
 def build_world():
     world = World(2500, 2500, 50)
-    world.add_rectangle_obstacle(525, 1500, 650, 1900) #rettangolo 575, 1550, 625, 1850 (12,34) larghezza (1,5.488), + 25 a l for margin
+    world.add_rectangle_obstacle(525, 1500, 675, 1900) #rettangolo 575, 1550, 625, 1850 (12,34) larghezza (1,5.488), +  a l for margin
     world.add_rectangle_obstacle(37.5, 1362.5, 62.5, 1387.5) #pacco pos (1, 27,5), larghezza 0,5
     return world
-
 
 def build_path(start_map, target_map):
     world = build_world()
@@ -252,15 +251,18 @@ def main():
                     angle_threshold=math.radians(0.25),
                 ):
                     visual_picker.reset()
-                    mission = MissionStateId.VISION_PICK
                     pose = tuple(round(value, 3) for value in arm.get_pose())
                     print("VISION_PICK: ricerca e centraggio, posa braccio", pose)
+                    dds.publish("read_image", 1, DDS.DDS_TYPE_INT)
+                    image = camera.read()
+                    color_finded = visual_picker.check_color(image)
+                    if color_finded is not None:
+                        mission= MissionStateId.VISION_PICK
 
             elif mission is MissionStateId.VISION_PICK:
                 dds.publish("read_image", 1, DDS.DDS_TYPE_INT)
                 image = camera.read()
-                result = visual_picker.evaluate(image, arm.get_pose(), delta_t)
-
+                result = visual_picker.evaluate(image, arm.get_pose(), delta_t, color_finded)
                 if result.found:
                     missing_frames = 0
                     if not arm.set_target(*result.target, ARM_ORIENTATION):
@@ -285,8 +287,6 @@ def main():
                             raise RuntimeError(
                                 "La quota di presa non e' raggiungibile"
                             )
-                        camera.close()
-                        camera_connected = False
                         mission = MissionStateId.PICK_DOWN
                         print(
                             f"PICK_DOWN: pacco {cargo_color.name}, "
@@ -295,29 +295,9 @@ def main():
                 else:
                     missing_frames += 1
                     if step % 30 == 0:
+                        print("")
                         print("VISION_PICK: pacco non visibile")
 
-                    # Cambio posa di visual scan dopo 30 frame, 4 pose circolari  temporaneamente disabilitato.
-                    # if missing_frames >= 30:
-                    #     vision_pose_index = (
-                    #         vision_pose_index + 1
-                    #     ) % len(VISION_SEARCH_TARGETS)
-                    #     vision_target = VISION_SEARCH_TARGETS[vision_pose_index]
-                    #     if not arm.set_target(
-                    #         *vision_target,
-                    #         ARM_ORIENTATION,
-                    #     ):
-                    #         raise RuntimeError(
-                    #             "La posa di ricerca non e' raggiungibile"
-                    #         )
-                    #     arm_settle_frames = 0
-                    #     missing_frames = 0
-                    #     mission = MissionStateId.PICK_APPROACH
-                    #     print(
-                    #         "VISION_PICK: nuova posa di ricerca "
-                    #         f"{vision_pose_index + 1}/"
-                    #         f"{len(VISION_SEARCH_TARGETS)}"
-                    #     )
 
                 if args.show_camera:
                     cv2.imshow("camera", image)
@@ -325,11 +305,18 @@ def main():
                     cv2.waitKey(1)
 
             elif mission is MissionStateId.PICK_DOWN:
+                #dds.publish("read_image", 1, DDS.DDS_TYPE_INT)
+                #image = camera.read()
+                #cv2.imshow('image', image)
+                k = cv2.waitKey(1)
+                if k == ord('q'):
+                    exit()
                 down_target = (*pick_xy, PICK_HEIGHT)
                 if arm_has_reached(arm, down_target):
                     payload_mass = PACKAGE_MASS_KG
                     ackermann.set_payload_mass(payload_mass)
-
+                    camera.close()
+                    camera_connected = False
                     lift_target = (*pick_xy, ARM_APPROACH_TARGET[2])
                     arm.set_target(*lift_target, ARM_ORIENTATION)
                     mission = MissionStateId.PICK_LIFT_SAFE
@@ -340,6 +327,7 @@ def main():
             elif mission is MissionStateId.PICK_LIFT_SAFE:
                 lift_target = (*pick_xy, ARM_APPROACH_TARGET[2])
                 if arm_has_reached(arm, lift_target):
+                    print("unload_zone", unload_zone)
                     path = build_path_to_unload_zone(unload_zone)
                     waypoint_index = 0
                     target = path[waypoint_index]
