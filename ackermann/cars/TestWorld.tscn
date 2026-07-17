@@ -123,6 +123,9 @@ current_pose_path = NodePath(".")
 camera_view_path = NodePath("../../../ArmCameraView")
 publish_tick = false
 
+[node name="Camera3D" parent="DemoCar/ArmMount/RobotArm/Joint_base/Joint_1/arm_1/Joint_2/joint_3/arm_2/joint_4/joint_5" parent_id_path=PackedInt32Array(893962122, 1820473295) index="6" unique_id=1783403906]
+cull_mask = 1048571
+
 [node name="Pose" type="Label" parent="." unique_id=178613827]
 offset_right = 820.0
 offset_bottom = 125.0
@@ -195,7 +198,6 @@ shape = SubResource("BoxShape3D_s5t8w")
 [node name="ArmCameraViewport" type="SubViewport" parent="." unique_id=760377737]
 
 [node name="ArmPreviewCamera" type="Camera3D" parent="ArmCameraViewport" unique_id=365728655]
-current = true
 script = ExtResource("3_5qabv")
 source_camera_path = NodePath("../../DemoCar/ArmMount/RobotArm/Joint_base/Joint_1/arm_1/Joint_2/joint_3/arm_2/joint_4/joint_5/Camera3D")
 
@@ -205,13 +207,11 @@ visibility_layer = 1023
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -367.0
+offset_left = -514.0
 offset_right = -2.0
-offset_bottom = 344.0
+offset_bottom = 512.0
 grow_horizontal = 0
 texture = SubResource("ViewportTexture_5qabv")
-expand_mode = 2
-stretch_mode = 5
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=435463921]
 transform = Transform3D(-0.06986088, 0, 5.4745913, 0, 3.2489996, 0, -0.9975567, 0, -0.38339657, 34, 2.5, -12)
