@@ -88,6 +88,7 @@ shadow_enabled = true
 
 [node name="DemoCar" parent="." unique_id=1011192078 instance=ExtResource("1")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, -1)
+collision_layer = 3
 
 [node name="ArmMount" type="Node3D" parent="DemoCar" unique_id=1440943801]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -0.2)
