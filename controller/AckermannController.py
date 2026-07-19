@@ -22,7 +22,7 @@ class AckermannController:
         self.polar2D = Polar2DController(
                 KP_linear=10,
                 v_max=10,
-                KP_heading=10,
+                KP_heading=3,
                 steering_max=math.radians(40)
             )
 

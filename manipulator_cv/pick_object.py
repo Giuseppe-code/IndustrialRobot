@@ -31,7 +31,7 @@ class VisualPickController:
         self,
         width=512,
         height=512,
-        target_height=0.75,
+        target_height=0.65,
         tolerance_px=6,
         lock_frames=8,
     ):
@@ -47,13 +47,12 @@ class VisualPickController:
             for color, thresholds in PACKAGE_THRESHOLDS.items()
         }
 
-        # I guadagni derivano dalla camera montata sul polso nella scena TestWorld.
-        self.x_controller = PID_Controller(1.0 / 850.0, 0.0, 0.0, 0.03)
-        self.y_controller = PID_Controller(1.0 / 760.0, 0.0, 0.0, 0.03)
+        # I guadagni derivano dalla camera monxtata sul polso nella scena TestWorld.
+        self.x_controller = PID_Controller(1.0 / 700.0, 0.0, 0.0, 0.03)
+        self.y_controller = PID_Controller(1.0 / 700.0, 0.0, 0.0, 0.03)
 
     def reset(self):
         self.locked_count = 0
-        self.locked_color = CargoColorCode.UNKNOWN
 
     def check_color(self, image):
         for color, finder in self.object_finders.items():
@@ -69,7 +68,8 @@ class VisualPickController:
     def evaluate(self, image, current_pose, delta_t, color_finded : CargoColorCode):
         binary_image = None
         cx, cy, binary_image = self.object_finders[color_finded].find(image)
-        
+        cv2.imshow("binary_image", binary_image)
+        key = cv2.waitKey(1) & 0xFF
         x, y, _, _ = current_pose
 
         #print("cx", cx, "cy", cy)

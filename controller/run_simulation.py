@@ -24,7 +24,7 @@ from path_planning.nf1 import NF1Planner
 from path_planning.world import World
 
 
-ARM_ORIENTATION = math.radians(-90)
+ARM_ORIENTATION = math.radians(-105)
 ARM_APPROACH_TARGET = (-0.8, 0.0, 0.75)
 # visual scan  multiposa temporaneamente disabilitata.
 # VISION_SEARCH_TARGETS = (
@@ -33,14 +33,14 @@ ARM_APPROACH_TARGET = (-0.8, 0.0, 0.75)
 #     (-0.7, -0.2, 0.75),
 #     (-0.7, 0.2, 0.75),
 # )
-PICK_HEIGHT = 0.08
-DROP_HEIGHT = 0.08
+PICK_HEIGHT = 0.2
+DROP_HEIGHT = -0.5
 PACKAGE_MASS_KG = 2.0
 WAYPOINT_THRESHOLD = 1.3
-FINAL_THRESHOLD = 0.18
+FINAL_THRESHOLD = 0.10
 UNLOAD_FINAL_THRESHOLD = 1
 
-PICK_START_MAP = (50, 50)
+PICK_START_MAP = (50, 50)#50 50 #cam 175 1375
 PICK_TARGET_MAP = (175, 1375)
 UNLOAD_TARGET_MAP = {
     UnloadZoneCode.A: (50, 50),
@@ -189,7 +189,7 @@ def main():
         print(f"Percorso verso B: {len(path)} punti, arrivo {path[-1]}")
 
         ackermann = AckermannController()
-        ackermann.set_pose(1.0, -1.0, 0.0)
+        ackermann.set_pose(1.0, -1, 0.0) #1 -1 #-3 20
         arm = FourJointsManipulatorControl()
         visual_picker = VisualPickController(camera.width, camera.height)
 
@@ -281,13 +281,10 @@ def main():
                         cargo_color = result.color
                         unload_zone = UNLOAD_ZONE_BY_COLOR[cargo_color]
                         current_x, current_y, _, _ = arm.get_pose()
-                        pick_xy = (current_x, current_y)
-                        down_target = (*pick_xy, PICK_HEIGHT)
-                        if not arm.set_target(*down_target, ARM_ORIENTATION):
-                            raise RuntimeError(
-                                "La quota di presa non e' raggiungibile"
-                            )
+                        locked_xy = (current_x, current_y)
+                        height= arm.get_pose()[2]
                         mission = MissionStateId.PICK_DOWN
+                        visual_picker.locked_count=0
                         print(
                             f"PICK_DOWN: pacco {cargo_color.name}, "
                             f"destinazione {unload_zone.name}"
@@ -298,28 +295,38 @@ def main():
                         print("")
                         print("VISION_PICK: pacco non visibile")
 
-
+            elif mission is MissionStateId.PICK_DOWN:
+                dds.publish("read_image", 1, DDS.DDS_TYPE_INT)
+                image = camera.read()
+                down_target = (*locked_xy, PICK_HEIGHT)
                 if args.show_camera:
                     cv2.imshow("camera", image)
-                    cv2.imshow("binary_image", result.binary_image)
-                    cv2.waitKey(1)
+                    key = cv2.waitKey(1) & 0xFF
+                    if key == ord('q'):
+                        break
 
-            elif mission is MissionStateId.PICK_DOWN:
-                #dds.publish("read_image", 1, DDS.DDS_TYPE_INT)
-                #image = camera.read()
-                #cv2.imshow('image', image)
-                k = cv2.waitKey(1)
-                if k == ord('q'):
-                    exit()
-                down_target = (*pick_xy, PICK_HEIGHT)
+                if not arm.set_target(*down_target, ARM_ORIENTATION):
+                    raise RuntimeError("La quota di presa non e' raggiungibile")
+                
+                actual = arm.get_pose()
+                print(f"target=({locked_xy[0]:.3f}, {locked_xy[1]:.3f}, {height:.3f}) actual=({actual[0]:.3f}, {actual[1]:.3f}, {actual[2]:.3f})")
+                
+                if arm_has_reached(arm, down_target, position_threshold= 0.1) and height > PICK_HEIGHT:
+                    height -= 0.2
+                
                 if arm_has_reached(arm, down_target):
+                    print("arm has reachedddddddd")
                     payload_mass = PACKAGE_MASS_KG
                     ackermann.set_payload_mass(payload_mass)
+                    current_x, current_y, _, _ = arm.get_pose()
+                    pick_xy = (current_x, current_y)
                     camera.close()
                     camera_connected = False
+                    ##indagare su arm_approach
                     lift_target = (*pick_xy, ARM_APPROACH_TARGET[2])
                     arm.set_target(*lift_target, ARM_ORIENTATION)
                     mission = MissionStateId.PICK_LIFT_SAFE
+                    
                     print(
                         f"PICK_LIFT_SAFE: pacco preso, carico {payload_mass:.1f} kg"
                     )
