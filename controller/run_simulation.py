@@ -34,7 +34,7 @@ ARM_APPROACH_TARGET = (-0.8, 0.0, 0.75)
 #     (-0.7, -0.2, 0.75),
 #     (-0.7, 0.2, 0.75),
 # )
-PICK_HEIGHT = 0.2
+PICK_HEIGHT = 0.15
 DROP_HEIGHT = -0.5
 PACKAGE_MASS_KG = 2.0
 # soglie di raggiunta della mappa
@@ -345,8 +345,6 @@ def main():
                     if result.locked:
                         cargo_color = result.color
                         unload_zone = UNLOAD_ZONE_BY_COLOR[cargo_color]
-                        current_x, current_y, _, _ = arm.get_pose()
-                        locked_xy = (current_x, current_y)
                         height= arm.get_pose()[2]
                         mission = MissionStateId.PICK_DOWN
                         visual_picker.locked_count=0
@@ -363,23 +361,25 @@ def main():
             elif mission is MissionStateId.PICK_DOWN:
                 dds.publish("read_image", 1, DDS.DDS_TYPE_INT)
                 image = camera.read()
-                down_target = (*locked_xy, PICK_HEIGHT)
+                result = visual_picker.evaluate(image, arm.get_pose(), delta_t, color_finded)
+                
                 if args.show_camera:
                     cv2.imshow("camera", image)
                     key = cv2.waitKey(1) & 0xFF
                     if key == ord('q'):
                         break
-
+                down_target=(result.target[0], result.target[1], height)
                 if not arm.set_target(*down_target, ARM_ORIENTATION):
                     raise RuntimeError("La quota di presa non e' raggiungibile")
                 
+                if arm_has_reached(arm, down_target, position_threshold=0.4) and (abs(result.error[0]) < 5)and(abs(result.error[1]) < 5) and height > PICK_HEIGHT:
+                    height -= 0.1
+
                 actual = arm.get_pose()
-                print(f"target=({locked_xy[0]:.3f}, {locked_xy[1]:.3f}, {height:.3f}) actual=({actual[0]:.3f}, {actual[1]:.3f}, {actual[2]:.3f})")
+                print(f"target=({down_target[0]:.3f}, {down_target[1]:.3f}, {down_target[2]:.3f}) actual=({actual[0]:.3f}, {actual[1]:.3f}, {actual[2]:.3f})")
                 
-                if arm_has_reached(arm, down_target, position_threshold= 0.1) and height > PICK_HEIGHT:
-                    height -= 0.2
                 
-                if arm_has_reached(arm, down_target):
+                if arm_has_reached(arm, down_target) and height < PICK_HEIGHT:
                     print("arm has reachedddddddd")
                     payload_mass = PACKAGE_MASS_KG
                     ackermann.set_payload_mass(payload_mass)

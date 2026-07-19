@@ -32,8 +32,8 @@ class VisualPickController:
         width=512,
         height=512,
         target_height=0.65,
-        tolerance_px=6,
-        lock_frames=8,
+        tolerance_px=5,
+        lock_frames=13,
     ):
         self.width = width
         self.height = height
