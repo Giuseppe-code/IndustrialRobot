@@ -22,34 +22,9 @@ albedo_color = Color(0.301961, 0.298039, 0.298039, 1)
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_k7rxj"]
 material = SubResource("1")
-size = Vector2(30, 50)
+size = Vector2(86, 50)
 
-[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_4ksr8"]
-points = PackedVector3Array(-25.1366, 0.136612, -25.1366, -25.1366, 0.136612, 25.1366, 25.1366, 0.136612, -25.1366, 25.1366, 0.136612, 25.1366)
-
-[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_5qabv"]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uwhkb"]
-albedo_color = Color(0.33782083, 0.30502242, 0.3487608, 1)
-
-[sub_resource type="PlaneMesh" id="PlaneMesh_5qabv"]
-material = SubResource("StandardMaterial3D_uwhkb")
-size = Vector2(6, 50)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_51iks"]
-albedo_color = Color(0, 0.009277024, 0.009277017, 1)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_uwhkb"]
-size = Vector3(6, 0.1, 50)
-
-[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_51iks"]
-
-[sub_resource type="PlaneMesh" id="2"]
-material = SubResource("1")
-size = Vector2(50, 50)
-
-[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_s5t8w"]
-points = PackedVector3Array(-25.1366, 0.136612, -25.1366, -25.1366, 0.136612, 25.1366, 25.1366, 0.136612, -25.1366, 25.1366, 0.136612, 25.1366)
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_k7rxj"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_s5t8w"]
 albedo_color = Color(0.039215688, 0.2, 0.8509804, 1)
@@ -93,7 +68,7 @@ material = SubResource("StandardMaterial3D_k7rxj")
 environment = SubResource("Environment_uwhkb")
 
 [node name="Ground" type="StaticBody3D" parent="." unique_id=506926078]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 0, -8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, -8)
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Ground" unique_id=108174235]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0)
@@ -101,7 +76,7 @@ rotation_order = 3
 mesh = SubResource("PlaneMesh_k7rxj")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Ground" unique_id=1581362793]
-shape = SubResource("ConvexPolygonShape3D_4ksr8")
+shape = SubResource("ConvexPolygonShape3D_k7rxj")
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=521090752]
 transform = Transform3D(-0.8298177, 0.26416185, -0.4915501, -0.020081073, 0.86615276, 0.49937576, 0.5576736, 0.42426145, -0.71344423, 4.649, 11.864, -26.372)
@@ -123,9 +98,6 @@ current_pose_path = NodePath(".")
 camera_view_path = NodePath("../../../ArmCameraView")
 publish_tick = false
 
-[node name="Camera3D" parent="DemoCar/ArmMount/RobotArm/Joint_base/Joint_1/arm_1/Joint_2/joint_3/arm_2/joint_4/joint_5" parent_id_path=PackedInt32Array(893962122, 1820473295) index="6" unique_id=1783403906]
-cull_mask = 1048571
-
 [node name="Pose" type="Label" parent="." unique_id=178613827]
 offset_right = 820.0
 offset_bottom = 125.0
@@ -135,27 +107,6 @@ text = "test"
 
 [node name="CargoVisualizer" type="Node3D" parent="." unique_id=2042117300]
 script = ExtResource("4_cargo")
-
-[node name="Ramp" type="StaticBody3D" parent="." unique_id=2035222282]
-transform = Transform3D(0.98640925, -0.16430736, 0, 0.16430736, 0.98640925, 0, 0, 0, 1, 10, 0.5, -8)
-physics_material_override = SubResource("PhysicsMaterial_5qabv")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Ramp" unique_id=741122659]
-mesh = SubResource("PlaneMesh_5qabv")
-surface_material_override/0 = SubResource("StandardMaterial3D_51iks")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Ramp" unique_id=914977835]
-shape = SubResource("BoxShape3D_uwhkb")
-
-[node name="SecondPlan" type="StaticBody3D" parent="." unique_id=1415419407]
-transform = Transform3D(0.99987334, -0.015916731, 0, 0.015916731, 0.99987334, 0, 0, 0, 1, 37.95, 1, -8)
-physics_material_override = SubResource("PhysicsMaterial_51iks")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="SecondPlan" unique_id=1264357327]
-mesh = SubResource("2")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="SecondPlan" unique_id=1051694174]
-shape = SubResource("ConvexPolygonShape3D_s5t8w")
 
 [node name="zoneA" type="StaticBody3D" parent="." unique_id=1924978701]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0.001, -1)
@@ -170,12 +121,12 @@ mesh = SubResource("PlaneMesh_uwhkb")
 shape = SubResource("BoxShape3D_5qabv")
 
 [node name="zoneB" type="StaticBody3D" parent="." unique_id=110125135]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 27.5, 1.002, -1)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 27.5, 0.002, -1)
 collision_layer = 4
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="zoneB" unique_id=1994756578]
 rotation_order = 3
-layers = 4
+layers = 8
 mesh = SubResource("PlaneMesh_51iks")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="zoneB" unique_id=1865178086]
@@ -185,7 +136,7 @@ shape = SubResource("BoxShape3D_s5t8w")
 script = ExtResource("2")
 
 [node name="zoneC" type="StaticBody3D" parent="." unique_id=326484329]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 41, 1.225, -18)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 41, 0.01, -18)
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="zoneC" unique_id=954032852]
 rotation_order = 3
@@ -198,6 +149,7 @@ shape = SubResource("BoxShape3D_s5t8w")
 [node name="ArmCameraViewport" type="SubViewport" parent="." unique_id=760377737]
 
 [node name="ArmPreviewCamera" type="Camera3D" parent="ArmCameraViewport" unique_id=365728655]
+cull_mask = 1048569
 script = ExtResource("3_5qabv")
 source_camera_path = NodePath("../../DemoCar/ArmMount/RobotArm/Joint_base/Joint_1/arm_1/Joint_2/joint_3/arm_2/joint_4/joint_5/Camera3D")
 
@@ -214,7 +166,7 @@ grow_horizontal = 0
 texture = SubResource("ViewportTexture_5qabv")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=435463921]
-transform = Transform3D(-0.06986088, 0, 5.4745913, 0, 3.2489996, 0, -0.9975567, 0, -0.38339657, 34, 2.5, -12)
+transform = Transform3D(-0.06986088, 0, 5.4745913, 0, 3.2489996, 0, -0.9975567, 0, -0.38339657, 34, 1.3, -12)
 mesh = SubResource("BoxMesh_4ksr8")
 
 [editable path="DemoCar/ArmMount/RobotArm"]

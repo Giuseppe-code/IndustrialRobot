@@ -40,3 +40,4 @@ transform = Transform3D(-0.9999992, 8.7422684e-08, -4.3711353e-08, -4.3711353e-0
 
 [node name="Camera3D" type="Camera3D" parent="Joint_base/Joint_1/arm_1/Joint_2/joint_3/arm_2/joint_4/joint_5" unique_id=1783403906]
 transform = Transform3D(-0.965929, 0, -0.25882, 0, 1, 0, 0.25882, 0, -0.965929, 0.0454065, 0.085573, 0.0880225)
+cull_mask = 1048569
