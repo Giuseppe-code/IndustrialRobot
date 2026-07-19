@@ -16,6 +16,7 @@ from controller.mission_types import (
     UNLOAD_ZONE_BY_COLOR,
     UnloadZoneCode,
 )
+from lib.data.dataplot import DataPlotter, plot_multiple
 from lib.dds.dds import DDS
 from lib.system.manipulator_control import FourJointsManipulatorControl
 from manipulator_cv.camera import Camera
@@ -23,53 +24,53 @@ from manipulator_cv.pick_object import VisualPickController
 from path_planning.nf1 import NF1Planner
 from path_planning.world import World
 
-
+# inizio configurazione
+# configurazione posa braccio
 ARM_ORIENTATION = math.radians(-90)
 ARM_APPROACH_TARGET = (-0.8, 0.0, 0.75)
-# visual scan  multiposa temporaneamente disabilitata.
-# VISION_SEARCH_TARGETS = (
-#     ARM_APPROACH_TARGET,
-#     (-0.6, 0.0, 0.75),
-#     (-0.7, -0.2, 0.75),
-#     (-0.7, 0.2, 0.75),
-# )
-PICK_HEIGHT = 0.08
-DROP_HEIGHT = 0.08
+PICK_HEIGHT = 0.18
+DROP_HEIGHT = 0.18
+# massa del pacco da aggiungere all'evaluate
 PACKAGE_MASS_KG = 2.0
+# soglie di raggiunta della mappa
 WAYPOINT_THRESHOLD = 1.3
 FINAL_THRESHOLD = 0.18
 UNLOAD_FINAL_THRESHOLD = 1
-
+# ogni punto va downscalato per la grandezza della scala per avere il riferimento godot.
+# punto a
 PICK_START_MAP = (50, 50)
+# punto b
 PICK_TARGET_MAP = (175, 1375)
+# zone di drop associate al colore su mission_types
 UNLOAD_TARGET_MAP = {
     UnloadZoneCode.A: (50, 50),
     UnloadZoneCode.C: (925, 2025),#925, 2025 #900, 2050
 }
 
 
+# calcolo distanza tra posa robot e waypoint , se minore di soglia true.
 def has_reached(x, y, target, threshold):
     target_x, target_y = target
     return math.dist((x,y), (target_x,target_y)) < threshold
 
-
+# calcolo della distnza e orientamento tra posa braccio e posa desiderata. restituisce true se le treshold sono soddisfatte.
 def arm_has_reached(
     arm : FourJointsManipulatorControl,
     target: tuple[float, float, float],
-    position_threshold=0.025,
+    position_threshold=0.005,
     angle_threshold=math.radians(3),
 ):
     x, y, z, angle = arm.get_pose()
     target_x, target_y, target_z = target
     distance = math.dist((x,y,z), (target_x, target_y, target_z))
-
+# normalizzazione errore di handling.
     angle_error = math.atan2(
         math.sin(angle - ARM_ORIENTATION),
         math.cos(angle - ARM_ORIENTATION),
     )
     return distance < position_threshold and abs(angle_error) < angle_threshold
 
-
+# connessioni e update con dds
 def publish_state(
     dds: DDS,
     ackermann : AckermannController,
@@ -94,13 +95,13 @@ def publish_state(
     dds.publish("CargoColorCode", float(cargo_color.value), DDS.DDS_TYPE_FLOAT)
     dds.publish("UnloadZoneCode", float(unload_zone.value), DDS.DDS_TYPE_FLOAT)
 
-
+# discretizzazione dell'ambiente, aggiunta di ostacolo fisso e pacco.
 def build_world():
     world = World(2500, 2500, 50)
     world.add_rectangle_obstacle(525, 1500, 675, 1900) #rettangolo 575, 1550, 625, 1850 (12,34) larghezza (1,5.488), +  a l for margin
     world.add_rectangle_obstacle(37.5, 1362.5, 62.5, 1387.5) #pacco pos (1, 27,5), larghezza 0,5
     return world
-
+# calcolo generica traiettoria
 def build_path(start_map, target_map):
     world = build_world()
     path_map = NF1Planner(world)
@@ -114,16 +115,16 @@ def build_path(start_map, target_map):
         path.append((world_x / world.scale, -world_y / world.scale)) ##offset to angle
     return path
 
-
+# calcolo con _path il tragitto per il punto b di carico.
 def build_path_to_pick_zone():
     # Il punto resta allineato a B, ma il carrello si ferma accanto al pacco.
     return build_path(PICK_START_MAP, PICK_TARGET_MAP)
 
-
+# calcola tragitto in base alla zona di scarico.
 def build_path_to_unload_zone(unload_zone):
     return build_path(PICK_TARGET_MAP, UNLOAD_TARGET_MAP[unload_zone])
 
-
+# ciclo di inseguimento dei waypoint con le relative soglie in base al waypoint intermedio / finale e print di debug.
 def follow_path(
     ackermann : AckermannController,
     delta_t : float,
@@ -154,7 +155,60 @@ def follow_path(
     ackermann.start_motion(target)
     return index, target, False
 
+# istanziazione dei grafici.
+def build_plotters():
+    speed_plot = DataPlotter()
+    speed_plot.set_x("Tempo (s)")
+    speed_plot.add_y("speed", "Velocita carrello (m/s)")
 
+    position_plot = DataPlotter()
+    position_plot.set_x("Tempo (s)")
+    position_plot.add_y("x", "Posizione X carrello (m)")
+    position_plot.add_y("y", "Posizione Y carrello (m)")
+
+    orientation_plot = DataPlotter()
+    orientation_plot.set_x("Tempo (s)")
+    orientation_plot.add_y("vehicle_theta", "Orientamento carrello (gradi)")
+    orientation_plot.add_y("arm_alpha", "Orientamento braccio (gradi)")
+
+    arm_plot = DataPlotter()
+    arm_plot.set_x("Tempo (s)")
+    arm_plot.add_y("theta0", "Theta 0 (gradi)")
+    arm_plot.add_y("theta1", "Theta 1 (gradi)")
+    arm_plot.add_y("theta2", "Theta 2 (gradi)")
+    arm_plot.add_y("theta3", "Theta 3 (gradi)")
+
+    return speed_plot, position_plot, orientation_plot, arm_plot
+
+
+def append_plot_data(plotters, elapsed_time, ackermann, arm, mission):
+    speed_plot, position_plot, orientation_plot, arm_plot = plotters
+    vehicle_x, vehicle_y, vehicle_theta = ackermann.pose
+    theta0, theta1, theta2, theta3 = arm.get_joint_angles()
+    _, _, _, arm_alpha = arm.get_pose()
+    is_driving = mission in (
+        MissionStateId.DRIVE_TO_B,
+        MissionStateId.DRIVE_TO_UNLOAD,
+    )
+
+    speed_plot.append_x(elapsed_time)
+    speed_plot.append_y("speed", ackermann.v if is_driving else 0.0)
+
+    position_plot.append_x(elapsed_time)
+    position_plot.append_y("x", vehicle_x)
+    position_plot.append_y("y", vehicle_y)
+
+    orientation_plot.append_x(elapsed_time)
+    orientation_plot.append_y("vehicle_theta", math.degrees(vehicle_theta))
+    orientation_plot.append_y("arm_alpha", math.degrees(arm_alpha))
+
+    arm_plot.append_x(elapsed_time)
+    arm_plot.append_y("theta0", math.degrees(theta0))
+    arm_plot.append_y("theta1", math.degrees(theta1))
+    arm_plot.append_y("theta2", math.degrees(theta2))
+    arm_plot.append_y("theta3", math.degrees(theta3))
+
+# utility utili per mostrare camera e limitare tempo di simulazione.
 def parse_args():
     parser = argparse.ArgumentParser(description="Missione di presa e scarico")
     parser.add_argument(
@@ -167,6 +221,11 @@ def parse_args():
         "--show-camera",
         action="store_true",
         help="mostra immagine e maschera del riconoscimento",
+    )
+    parser.add_argument(
+        "--no-plots",
+        action="store_true",
+        help="non mostrare i grafici al termine della simulazione",
     )
     return parser.parse_args()
 
@@ -192,6 +251,7 @@ def main():
         ackermann.set_pose(1.0, -1.0, 0.0)
         arm = FourJointsManipulatorControl()
         visual_picker = VisualPickController(camera.width, camera.height)
+        plotters = build_plotters()
 
         mission = MissionStateId.DRIVE_TO_B
         cargo_color = CargoColorCode.UNKNOWN
@@ -396,10 +456,14 @@ def main():
                 cargo_color,
                 unload_zone,
             )
+            append_plot_data(plotters, elapsed_time, ackermann, arm, mission)
             step += 1
 
             if completed:
                 break
+
+        if not args.no_plots:
+            plot_multiple(plotters, figsize=(12, 12))
 
         if not completed:
             print(

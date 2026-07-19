@@ -113,6 +113,7 @@ shadow_enabled = true
 
 [node name="DemoCar" parent="." unique_id=1011192078 instance=ExtResource("1")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, -1)
+collision_layer = 3
 
 [node name="ArmMount" type="Node3D" parent="DemoCar" unique_id=1440943801]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, -0.2)
@@ -125,13 +126,6 @@ publish_tick = false
 
 [node name="Camera3D" parent="DemoCar/ArmMount/RobotArm/Joint_base/Joint_1/arm_1/Joint_2/joint_3/arm_2/joint_4/joint_5" parent_id_path=PackedInt32Array(893962122, 1820473295) index="6" unique_id=1783403906]
 cull_mask = 1048571
-
-[node name="Pose" type="Label" parent="." unique_id=178613827]
-offset_right = 820.0
-offset_bottom = 125.0
-theme_override_colors/font_color = Color(0, 0, 0, 1)
-theme_override_font_sizes/font_size = 36
-text = "test"
 
 [node name="CargoVisualizer" type="Node3D" parent="." unique_id=2042117300]
 script = ExtResource("4_cargo")
