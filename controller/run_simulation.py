@@ -2,6 +2,7 @@ import argparse
 import math
 import sys
 from pathlib import Path
+from matplotlib import pylab
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT))
@@ -35,10 +36,10 @@ ARM_APPROACH_TARGET = (-0.8, 0.0, 0.75)
 #     (-0.7, 0.2, 0.75),
 # )
 PICK_HEIGHT = 0.15
-DROP_HEIGHT = -0.5
+DROP_HEIGHT = 0.15
 PACKAGE_MASS_KG = 2.0
 # soglie di raggiunta della mappa
-WAYPOINT_THRESHOLD = 1.3
+WAYPOINT_THRESHOLD = 2
 FINAL_THRESHOLD = 0.10
 UNLOAD_FINAL_THRESHOLD = 1
 # ogni punto va downscalato per la grandezza della scala per avere il riferimento godot.
@@ -120,6 +121,24 @@ def build_path(start_map, target_map):
         path.append((world_x / world.scale, -world_y / world.scale)) ##offset to angle
     return path
 
+def build_angle_search(path):
+    new_path= []
+    index =0
+    print("path. prec", path)
+    new_path.append(path[index])
+    print("len_path", len(path)-1)
+    while index <= len(path)-1:
+        distanceX= path[index][0] - path[index+1][0]
+        distanceY= path[index][1] - path[index+1][1]
+        while index < len(path)-1 and distanceX == (path[index][0] - path[index+1][0]) and distanceY == (path[index][1] - path[index+1][1]):
+            print("dentro dentro")
+            index+=1
+        new_path.append(path[index])
+        index+=1
+    print("path actual", new_path)
+    return new_path
+
+
 # calcolo con _path il tragitto per il punto b di carico.
 def build_path_to_pick_zone():
     # Il punto resta allineato a B, ma il carrello si ferma accanto al pacco.
@@ -147,6 +166,8 @@ def follow_path(
     if step % 60 == 0:
         distance = math.dist(ackermann.pose[:2], target)
         print(f"{label}: punto {index + 1}/{len(path)}, distanza {distance:.2f} m")
+        print("Target", target)
+
 
     if not has_reached(*ackermann.pose[:2], target, threshold):
         return index, target, False
@@ -164,7 +185,10 @@ def follow_path(
 def build_plotters():
     speed_plot = DataPlotter()
     speed_plot.set_x("Tempo (s)")
-    speed_plot.add_y("speed", "Velocita carrello (m/s)")
+    speed_plot.add_y("Speed", "Velocita carrello (m/s)")
+    speed_plot.add_y("Target_Speed", "Velocita Target carrello (m/s)")
+
+
 
     position_plot = DataPlotter()
     position_plot.set_x("Tempo (s)")
@@ -173,8 +197,8 @@ def build_plotters():
 
     orientation_plot = DataPlotter()
     orientation_plot.set_x("Tempo (s)")
-    orientation_plot.add_y("vehicle_theta", "Orientamento carrello (gradi)")
-    orientation_plot.add_y("arm_alpha", "Orientamento braccio (gradi)")
+    orientation_plot.add_y("vehicle_angle", "Orientamento carrello (gradi)")
+    #orientation_plot.add_y("arm_alpha", "Orientamento braccio (gradi)")
 
     arm_plot = DataPlotter()
     arm_plot.set_x("Tempo (s)")
@@ -186,7 +210,7 @@ def build_plotters():
     return speed_plot, position_plot, orientation_plot, arm_plot
 
 
-def append_plot_data(plotters, elapsed_time, ackermann, arm, mission):
+def append_plot_data(plotters, elapsed_time, ackermann: AckermannController, arm, mission: MissionStateId):
     speed_plot, position_plot, orientation_plot, arm_plot = plotters
     vehicle_x, vehicle_y, vehicle_theta = ackermann.pose
     theta0, theta1, theta2, theta3 = arm.get_joint_angles()
@@ -196,22 +220,32 @@ def append_plot_data(plotters, elapsed_time, ackermann, arm, mission):
         MissionStateId.DRIVE_TO_UNLOAD,
     )
 
-    speed_plot.append_x(elapsed_time)
-    speed_plot.append_y("speed", ackermann.v if is_driving else 0.0)
+    vision_or_picker = mission in (
+        MissionStateId.VISION_PICK,
+        MissionStateId.PICK_DOWN
+    )
+
+    if is_driving:
+        speed_plot.append_x(elapsed_time)
+        speed_plot.append_y("Speed", ackermann.v)
+        speed_plot.append_y("Target_Speed", ackermann.vt)
+        
+        orientation_plot.append_x(elapsed_time)
+        orientation_plot.append_y("vehicle_angle", math.degrees(ackermann.alpha_c))
+        #orientation_plot.append_y("arm_alpha", math.degrees(arm_alpha))
 
     position_plot.append_x(elapsed_time)
     position_plot.append_y("x", vehicle_x)
     position_plot.append_y("y", vehicle_y)
 
-    orientation_plot.append_x(elapsed_time)
-    orientation_plot.append_y("vehicle_theta", math.degrees(vehicle_theta))
-    orientation_plot.append_y("arm_alpha", math.degrees(arm_alpha))
-
-    arm_plot.append_x(elapsed_time)
-    arm_plot.append_y("theta0", math.degrees(theta0))
-    arm_plot.append_y("theta1", math.degrees(theta1))
-    arm_plot.append_y("theta2", math.degrees(theta2))
-    arm_plot.append_y("theta3", math.degrees(theta3))
+    
+    if vision_or_picker : 
+        print("dnetro")
+        arm_plot.append_x(elapsed_time)
+        arm_plot.append_y("theta0", math.degrees(theta0))
+        arm_plot.append_y("theta1", math.degrees(theta1))
+        arm_plot.append_y("theta2", math.degrees(theta2))
+        arm_plot.append_y("theta3", math.degrees(theta3))
 
 # utility utili per mostrare camera e limitare tempo di simulazione.
 def parse_args():
@@ -226,11 +260,6 @@ def parse_args():
         "--show-camera",
         action="store_true",
         help="mostra immagine e maschera del riconoscimento",
-    )
-    parser.add_argument(
-        "--no-plots",
-        action="store_true",
-        help="non mostrare i grafici al termine della simulazione",
     )
     return parser.parse_args()
 
@@ -250,11 +279,13 @@ def main():
         camera_connected = True
 
         path = build_path_to_pick_zone()
+        path = build_angle_search(path)
         print(f"Percorso verso B: {len(path)} punti, arrivo {path[-1]}")
 
         ackermann = AckermannController()
         ackermann.set_pose(1.0, -1, 0.0) #1 -1 #-3 20
         arm = FourJointsManipulatorControl()
+        print(f"L1={arm.arm.element_1.L} L2={arm.arm.element_2.L} L3={arm.arm.element_3.L}")
         visual_picker = VisualPickController(camera.width, camera.height)
         plotters = build_plotters()
 
@@ -323,6 +354,7 @@ def main():
                     color_finded = visual_picker.check_color(image)
                     if color_finded is not None:
                         mission= MissionStateId.VISION_PICK
+                    
 
             elif mission is MissionStateId.VISION_PICK:
                 dds.publish("read_image", 1, DDS.DDS_TYPE_INT)
@@ -355,10 +387,10 @@ def main():
                 else:
                     missing_frames += 1
                     if step % 30 == 0:
-                        print("")
                         print("VISION_PICK: pacco non visibile")
 
             elif mission is MissionStateId.PICK_DOWN:
+
                 dds.publish("read_image", 1, DDS.DDS_TYPE_INT)
                 image = camera.read()
                 result = visual_picker.evaluate(image, arm.get_pose(), delta_t, color_finded)
@@ -371,15 +403,13 @@ def main():
                 down_target=(result.target[0], result.target[1], height)
                 if not arm.set_target(*down_target, ARM_ORIENTATION):
                     raise RuntimeError("La quota di presa non e' raggiungibile")
-                
-                if arm_has_reached(arm, down_target, position_threshold=0.4) and (abs(result.error[0]) < 5)and(abs(result.error[1]) < 5) and height > PICK_HEIGHT:
-                    height -= 0.1
+                if (arm_has_reached(arm, down_target, position_threshold=0.8) and abs(result.error[0]) < 8)and(abs(result.error[1]) < 8) and height > PICK_HEIGHT:
+                    height -= 0.2
 
                 actual = arm.get_pose()
                 print(f"target=({down_target[0]:.3f}, {down_target[1]:.3f}, {down_target[2]:.3f}) actual=({actual[0]:.3f}, {actual[1]:.3f}, {actual[2]:.3f})")
-                
-                
-                if arm_has_reached(arm, down_target) and height < PICK_HEIGHT:
+
+                if arm_has_reached(arm, down_target):
                     print("arm has reachedddddddd")
                     payload_mass = PACKAGE_MASS_KG
                     ackermann.set_payload_mass(payload_mass)
@@ -391,16 +421,16 @@ def main():
                     lift_target = (*pick_xy, ARM_APPROACH_TARGET[2])
                     arm.set_target(*lift_target, ARM_ORIENTATION)
                     mission = MissionStateId.PICK_LIFT_SAFE
-                    
+
                     print(
                         f"PICK_LIFT_SAFE: pacco preso, carico {payload_mass:.1f} kg"
                     )
 
             elif mission is MissionStateId.PICK_LIFT_SAFE:
-                lift_target = (*pick_xy, ARM_APPROACH_TARGET[2])
                 if arm_has_reached(arm, lift_target):
                     print("unload_zone", unload_zone)
                     path = build_path_to_unload_zone(unload_zone)
+                    path = build_angle_search(path)
                     waypoint_index = 0
                     target = path[waypoint_index]
                     ackermann.start_motion(target)
@@ -458,6 +488,9 @@ def main():
                         f"DONE: pacco {cargo_color.name} depositato "
                         f"in zona {unload_zone.name}"
                     )
+                mission = MissionStateId.DONE
+                completed = False
+            
 
             publish_state(
                 dds,
@@ -471,11 +504,16 @@ def main():
             append_plot_data(plotters, elapsed_time, ackermann, arm, mission)
             step += 1
 
-            if completed:
+            if mission is MissionStateId.DONE:
                 break
 
-        if not args.no_plots:
-            plot_multiple(plotters, figsize=(12, 12))
+
+        for plotter in plotters:
+            if plotter.x_data:  # solo se ha dati
+                plotter.plot()
+            else:
+                print(f"[plot] nessun dato per {list(plotter.y_label.keys())}")
+        pylab.show()
 
         if not completed:
             print(

@@ -13,7 +13,7 @@ class DataPlotter:
         self.y_label = {}
         self.x_data = []
         self.x_label = "x"
-        self.__options = ['r-', 'b-', 'g-']
+        self.__options = ['r-', 'b-', 'g-', '-m']
         DataPlotter.FIGURE = 1
 
     def set_x(self, label):
@@ -46,7 +46,7 @@ class DataPlotter:
             i += 1
         pylab.xlabel(self.x_label)
         pylab.legend()
-        pylab.show()
+        pylab.show(block = False)
         DataPlotter.FIGURE += 1
 
 
