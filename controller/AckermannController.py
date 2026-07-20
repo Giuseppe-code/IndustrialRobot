@@ -15,20 +15,22 @@ class AckermannController:
             _r_traction = 0.5,
             _lateral_wheelbase= 1)
         self.trajectory =StraightLine2DMotion( 
-                _vmax = 10, 
-                _acc = 5,
-                _dec= 5)
+                _vmax = 4, 
+                _acc = 4.5,
+                _dec= 4.5)
     
         self.polar2D = Polar2DController(
-                KP_linear=10,
-                v_max=10,
-                KP_heading=3,
+                KP_linear=2,
+                v_max=4,
+                KP_heading=5,
                 steering_max=math.radians(40)
             )
 
-        self.linearSpeedController = PID_Controller(2, 0, 0, 7)
+        self.linearSpeedController = PID_Controller(15, 5, 0, 100)
         self.pose=[0,0,0]
         self.v=0
+        self.vt=0
+        self.alpha_c=math.radians(0)
 
     def set_pose(self, x, y, theta):
         self.pose = [x, y, theta]
@@ -48,13 +50,13 @@ class AckermannController:
         self.pose=self.ackermann.get_pose()
 
         (xt, yt) = self.trajectory.evaluate(delta_t)
-        (vt, alpha_c) = self.polar2D.evaluate(delta_t=delta_t, xt=xt, yt=yt, current_pose=self.pose)
-        error_v= vt-self.v
+        (self.vt, self.alpha_c) = self.polar2D.evaluate(delta_t=delta_t, xt=xt, yt=yt, current_pose=self.pose)
+        error_v= self.vt-self.v
         # Stampe sostituite dal log generale su run_simulation.py.
         # print("Error_v", error_v)
         T= self.linearSpeedController.evaluate(delta_t=delta_t, _error= error_v)
         # print("Forza applicata T", T)
         #ackermannVehicle
-        self.ackermann.evaluate(delta_t=delta_t, torque=T, steering_angle=alpha_c)
+        self.ackermann.evaluate(delta_t=delta_t, torque=T, steering_angle=self.alpha_c)
         
        
