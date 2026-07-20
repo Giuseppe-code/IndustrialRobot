@@ -121,6 +121,8 @@ def build_path(start_map, target_map):
         path.append((world_x / world.scale, -world_y / world.scale)) ##offset to angle
     return path
 
+# se un insieme di punti è attraversato da una linea retta prende solo l'inizio e la fine, 
+#tralasciando i punti intermedi
 def build_angle_search(path):
     new_path= []
     index =0
@@ -188,8 +190,6 @@ def build_plotters():
     speed_plot.add_y("Speed", "Velocita carrello (m/s)")
     speed_plot.add_y("Target_Speed", "Velocita Target carrello (m/s)")
 
-
-
     position_plot = DataPlotter()
     position_plot.set_x("Tempo (s)")
     position_plot.add_y("x", "Posizione X carrello (m)")
@@ -232,13 +232,11 @@ def append_plot_data(plotters, elapsed_time, ackermann: AckermannController, arm
         
         orientation_plot.append_x(elapsed_time)
         orientation_plot.append_y("vehicle_angle", math.degrees(ackermann.alpha_c))
-        #orientation_plot.append_y("arm_alpha", math.degrees(arm_alpha))
 
-    position_plot.append_x(elapsed_time)
-    position_plot.append_y("x", vehicle_x)
-    position_plot.append_y("y", vehicle_y)
+        position_plot.append_x(elapsed_time)
+        position_plot.append_y("x", vehicle_x)
+        position_plot.append_y("y", vehicle_y)
 
-    
     if vision_or_picker : 
         print("dnetro")
         arm_plot.append_x(elapsed_time)
@@ -278,8 +276,7 @@ def main():
         camera.connect()
         camera_connected = True
 
-        path = build_path_to_pick_zone()
-        path = build_angle_search(path)
+        path = build_angle_search(build_path_to_pick_zone())
         print(f"Percorso verso B: {len(path)} punti, arrivo {path[-1]}")
 
         ackermann = AckermannController()
@@ -422,8 +419,6 @@ def main():
 
         for plotter in plotters:
             if plotter.x_data:  # solo se ha dati
-                plotter.plot()
-            else:
                 print(f"[plot] nessun dato per {list(plotter.y_label.keys())}")
         pylab.show()
 

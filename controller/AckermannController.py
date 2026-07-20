@@ -22,11 +22,11 @@ class AckermannController:
         self.polar2D = Polar2DController(
                 KP_linear=2,
                 v_max=4,
-                KP_heading=5,
+                KP_heading=1.5,
                 steering_max=math.radians(40)
             )
 
-        self.linearSpeedController = PID_Controller(15, 5, 0, 100)
+        self.linearSpeedController = PID_Controller(20, 5, 0, 100)
         self.pose=[0,0,0]
         self.v=0
         self.vt=0
