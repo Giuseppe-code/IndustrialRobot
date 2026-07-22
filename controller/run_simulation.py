@@ -41,18 +41,19 @@ UNLOAD_FINAL_THRESHOLD = 1
 def arm_has_reached(
     arm : FourJointsManipulatorControl,
     target: tuple[float, float, float],
-    position_threshold=0.005,
+    position_threshold=5,
     angle_threshold=math.radians(3),
 ):
     x, y, z, angle = arm.get_pose()
     target_x, target_y, target_z = target
-    distance = math.dist((x,y,z), (target_x, target_y, target_z))
+    xy_error = math.dist((x,y), (target_x, target_y))
+    z_error = abs(z - target_z)
 # normalizzazione errore di handling.
     angle_error = math.atan2(
         math.sin(angle - ARM_ORIENTATION),
         math.cos(angle - ARM_ORIENTATION),
     )
-    return distance < position_threshold and abs(angle_error) < angle_threshold
+    return abs(xy_error) <= position_threshold and abs(z_error) < position_threshold and abs(angle_error) <= angle_threshold
 
 # connessioni e update con dds
 def publish_state(
@@ -230,7 +231,7 @@ def main():
                 if arm_has_reached(
                     arm,
                     vision_target,
-                    position_threshold=0.003,
+                    position_threshold=5,
                     angle_threshold=math.radians(0.25),
                 ):
                     visual_picker.reset()
@@ -267,6 +268,9 @@ def main():
                         height= arm.get_pose()[2]
                         mission = MissionStateId.PICK_DOWN
                         visual_picker.locked_count=0
+                        down_target=(result.target[0], result.target[1], height)
+                        if not arm.set_target(*down_target, ARM_ORIENTATION):
+                            raise RuntimeError("La quota di presa non e' raggiungibile")
                         print(
                             f"PICK_DOWN: pacco {cargo_color.name}, "
                             f"destinazione {unload_zone.name}"
@@ -287,17 +291,17 @@ def main():
                     key = cv2.waitKey(1) & 0xFF
                     if key == ord('q'):
                         break
-                down_target=(result.target[0], result.target[1], height)
-                if not arm.set_target(*down_target, ARM_ORIENTATION):
-                    raise RuntimeError("La quota di presa non e' raggiungibile")
-                if (arm_has_reached(arm, down_target, position_threshold=0.8) and abs(result.error[0]) < 8)and(abs(result.error[1]) < 8) and height > PICK_HEIGHT:
-                    height -= 0.2
+                if (abs(result.error[0]) < 10)and(abs(result.error[1]) < 10) and height > PICK_HEIGHT:
+                    height -= 0.15
+                    down_target=(result.target[0], result.target[1], height)
+                    if not arm.set_target(*down_target, ARM_ORIENTATION):
+                        raise RuntimeError("La quota di presa non e' raggiungibile")
 
                 actual = arm.get_pose()
                 print(f"target=({down_target[0]:.3f}, {down_target[1]:.3f}, {down_target[2]:.3f}) actual=({actual[0]:.3f}, {actual[1]:.3f}, {actual[2]:.3f})")
 
-                if arm_has_reached(arm, down_target):
-                    print("arm has reachedddddddd")
+                print("valore height", height, "valore da raggiungere", PICK_HEIGHT)
+                if arm_has_reached(arm, down_target, position_threshold=3) and height <= PICK_HEIGHT:
                     payload_mass = PACKAGE_MASS_KG
                     ackermann.set_payload_mass(payload_mass)
                     current_x, current_y, _, _ = arm.get_pose()
@@ -348,20 +352,15 @@ def main():
                     print("DROP_DOWN: inizio deposito del pacco")
 
             elif mission is MissionStateId.DROP_DOWN:
-                drop_target = (
-                    ARM_APPROACH_TARGET[0],
-                    ARM_APPROACH_TARGET[1],
-                    DROP_HEIGHT,
-                )
                 if arm_has_reached(arm, drop_target):
                     payload_mass = 0.0
                     ackermann.set_payload_mass(payload_mass)
-                    arm.set_target(*ARM_APPROACH_TARGET, ARM_ORIENTATION)
+                    arm.set_target(*ARM_MOVEMENT_TARGET, ARM_ORIENTATION)
                     mission = MissionStateId.DROP_LIFT_SAFE
                     print("DROP_LIFT_SAFE: pacco rilasciato, massa rimossa")
 
             elif mission is MissionStateId.DROP_LIFT_SAFE:
-                if arm_has_reached(arm, ARM_APPROACH_TARGET):
+                if arm_has_reached(arm, ARM_MOVEMENT_TARGET):
                     mission = MissionStateId.DONE
                     completed = True
                     print(

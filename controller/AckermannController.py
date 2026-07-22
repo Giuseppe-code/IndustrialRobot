@@ -26,7 +26,7 @@ class AckermannController:
                 steering_max=math.radians(40)
             )
 
-        self.linearSpeedController = PID_Controller(20, 5, 0, 100)
+        self.linearSpeedController = PID_Controller(20, 8, 0, 100)
         self.pose=[0,0,0]
         self.v=0
         self.vt=0

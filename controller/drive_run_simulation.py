@@ -28,6 +28,7 @@ from path_planning.world import World
 
 ARM_ORIENTATION = math.radians(-105)
 ARM_APPROACH_TARGET = (-0.8, 0.0, 0.75)
+ARM_MOVEMENT_TARGET = (0.20, 0.00, 0.55)
 # visual scan  multiposa temporaneamente disabilitata.
 # VISION_SEARCH_TARGETS = (
 #     ARM_APPROACH_TARGET,
@@ -385,7 +386,7 @@ def main():
                 if arm_has_reached(arm, drop_target):
                     payload_mass = 0.0
                     ackermann.set_payload_mass(payload_mass)
-                    arm.set_target(*ARM_APPROACH_TARGET, ARM_ORIENTATION)
+                    arm.set_target(*ARM_MOVEMENT_TARGET, ARM_ORIENTATION)
                     mission = MissionStateId.DROP_LIFT_SAFE
                     print("DROP_LIFT_SAFE: pacco rilasciato, massa rimossa")
 
