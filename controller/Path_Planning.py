@@ -70,7 +70,7 @@ class PathPlanning:
         print("path. prec", path)
         new_path.append(path[index])
         print("len_path", len(path)-1)
-        while index <= len(path)-1:
+        while index < len(path)-1:
             distanceX= path[index][0] - path[index+1][0]
             distanceY= path[index][1] - path[index+1][1]
             while index < len(path)-1 and distanceX == (path[index][0] - path[index+1][0]) and distanceY == (path[index][1] - path[index+1][1]):

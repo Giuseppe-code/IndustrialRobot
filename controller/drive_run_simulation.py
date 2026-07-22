@@ -362,8 +362,8 @@ def main():
                     arm.set_target(*ARM_APPROACH_TARGET, ARM_ORIENTATION)
                     mission = MissionStateId.DROP_APPROACH
                     print(f"DROP_APPROACH: arrivo in zona {unload_zone.name}")
-                    mission = MissionStateId.DONE
-                    completed = True
+                    #mission = MissionStateId.DONE
+                    #completed = True
 
             elif mission is MissionStateId.DROP_APPROACH:
                 if arm_has_reached(arm, ARM_APPROACH_TARGET):

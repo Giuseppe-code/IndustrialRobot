@@ -9,7 +9,7 @@ sys.path.append(str(ROOT))
 sys.path.append(str(ROOT / "path_planning"))
 
 import cv2
-
+from controller.Path_Planning import *
 from controller.AckermannController import AckermannController
 from controller.mission_types import (
     CargoColorCode,
@@ -28,36 +28,14 @@ from path_planning.world import World
 
 ARM_ORIENTATION = math.radians(-105)
 ARM_APPROACH_TARGET = (-0.8, 0.0, 0.75)
-# visual scan  multiposa temporaneamente disabilitata.
-# VISION_SEARCH_TARGETS = (
-#     ARM_APPROACH_TARGET,
-#     (-0.6, 0.0, 0.75),
-#     (-0.7, -0.2, 0.75),
-#     (-0.7, 0.2, 0.75),
-# )
+ARM_MOVEMENT_TARGET = (0.20, 0.00, 0.55)
+
 PICK_HEIGHT = 0.15
 DROP_HEIGHT = 0.15
 PACKAGE_MASS_KG = 2.0
-# soglie di raggiunta della mappa
-WAYPOINT_THRESHOLD = 2
-FINAL_THRESHOLD = 0.10
+
 UNLOAD_FINAL_THRESHOLD = 1
-# ogni punto va downscalato per la grandezza della scala per avere il riferimento godot.
-# punto a
-PICK_START_MAP = (50, 50)
-# punto b
-PICK_TARGET_MAP = (175, 1375)
-# zone di drop associate al colore su mission_types
-UNLOAD_TARGET_MAP = {
-    UnloadZoneCode.A: (50, 50),
-    UnloadZoneCode.C: (925, 2025),#925, 2025 #900, 2050
-}
 
-
-# calcolo distanza tra posa robot e waypoint , se minore di soglia true.
-def has_reached(x, y, target, threshold):
-    target_x, target_y = target
-    return math.dist((x,y), (target_x,target_y)) < threshold
 
 # calcolo della distnza e orientamento tra posa braccio e posa desiderata. restituisce true se le treshold sono soddisfatte.
 def arm_has_reached(
@@ -101,94 +79,12 @@ def publish_state(
     dds.publish("CargoColorCode", float(cargo_color.value), DDS.DDS_TYPE_FLOAT)
     dds.publish("UnloadZoneCode", float(unload_zone.value), DDS.DDS_TYPE_FLOAT)
 
-# discretizzazione dell'ambiente, aggiunta di ostacolo fisso e pacco.
-def build_world():
-    world = World(2500, 2500, 50)
-    world.add_rectangle_obstacle(525, 1500, 675, 1900) #rettangolo 575, 1550, 625, 1850 (12,34) larghezza (1,5.488), +  a l for margin
-    world.add_rectangle_obstacle(37.5, 1362.5, 62.5, 1387.5) #pacco pos (1, 27,5), larghezza 0,5
-    return world
-# calcolo generica traiettoria
-def build_path(start_map, target_map):
-    world = build_world()
-    path_map = NF1Planner(world)
-    path_map=path_map.plan(start_map, target_map)
-    #img = path_map.world_to_image()
-    #cv2.imshow("world", img)
-    #cv2.waitKey(0)
-    path = []
-    for x, y in path_map:
-        world_x, world_y = world.to_world(x, y)
-        path.append((world_x / world.scale, -world_y / world.scale)) ##offset to angle
-    return path
-
-def build_angle_search(path):
-    new_path= []
-    index =0
-    print("path. prec", path)
-    new_path.append(path[index])
-    print("len_path", len(path)-1)
-    while index <= len(path)-1:
-        distanceX= path[index][0] - path[index+1][0]
-        distanceY= path[index][1] - path[index+1][1]
-        while index < len(path)-1 and distanceX == (path[index][0] - path[index+1][0]) and distanceY == (path[index][1] - path[index+1][1]):
-            print("dentro dentro")
-            index+=1
-        new_path.append(path[index])
-        index+=1
-    print("path actual", new_path)
-    return new_path
-
-
-# calcolo con _path il tragitto per il punto b di carico.
-def build_path_to_pick_zone():
-    # Il punto resta allineato a B, ma il carrello si ferma accanto al pacco.
-    return build_path(PICK_START_MAP, PICK_TARGET_MAP)
-
-# calcola tragitto in base alla zona di scarico.
-def build_path_to_unload_zone(unload_zone):
-    return build_path(PICK_TARGET_MAP, UNLOAD_TARGET_MAP[unload_zone])
-
-# ciclo di inseguimento dei waypoint con le relative soglie in base al waypoint intermedio / finale e print di debug.
-def follow_path(
-    ackermann : AckermannController,
-    delta_t : float,
-    path : list[tuple[int, int]],
-    index : int,
-    target: tuple[int,int],
-    step: int,
-    label: str,
-    final_threshold=FINAL_THRESHOLD,##final_threshold o unload_final_threshold
-):
-    ackermann.evaluate(delta_t)
-    is_last = index == len(path) - 1
-    threshold = final_threshold if is_last else WAYPOINT_THRESHOLD
-    
-    if step % 60 == 0:
-        distance = math.dist(ackermann.pose[:2], target)
-        print(f"{label}: punto {index + 1}/{len(path)}, distanza {distance:.2f} m")
-        print("Target", target)
-
-
-    if not has_reached(*ackermann.pose[:2], target, threshold):
-        return index, target, False
-
-    if is_last:
-        return index, target, True
-
-    #ha raggiunto la cella, ora deve puntare alla prossima 
-    index += 1
-    target = path[index]
-    ackermann.start_motion(target)
-    return index, target, False
-
 # istanziazione dei grafici.
 def build_plotters():
     speed_plot = DataPlotter()
     speed_plot.set_x("Tempo (s)")
     speed_plot.add_y("Speed", "Velocita carrello (m/s)")
     speed_plot.add_y("Target_Speed", "Velocita Target carrello (m/s)")
-
-
 
     position_plot = DataPlotter()
     position_plot.set_x("Tempo (s)")
@@ -198,7 +94,6 @@ def build_plotters():
     orientation_plot = DataPlotter()
     orientation_plot.set_x("Tempo (s)")
     orientation_plot.add_y("vehicle_angle", "Orientamento carrello (gradi)")
-    #orientation_plot.add_y("arm_alpha", "Orientamento braccio (gradi)")
 
     arm_plot = DataPlotter()
     arm_plot.set_x("Tempo (s)")
@@ -232,15 +127,12 @@ def append_plot_data(plotters, elapsed_time, ackermann: AckermannController, arm
         
         orientation_plot.append_x(elapsed_time)
         orientation_plot.append_y("vehicle_angle", math.degrees(ackermann.alpha_c))
-        #orientation_plot.append_y("arm_alpha", math.degrees(arm_alpha))
 
-    position_plot.append_x(elapsed_time)
-    position_plot.append_y("x", vehicle_x)
-    position_plot.append_y("y", vehicle_y)
-
+        position_plot.append_x(elapsed_time)
+        position_plot.append_y("x", vehicle_x)
+        position_plot.append_y("y", vehicle_y)
     
     if vision_or_picker : 
-        print("dnetro")
         arm_plot.append_x(elapsed_time)
         arm_plot.append_y("theta0", math.degrees(theta0))
         arm_plot.append_y("theta1", math.degrees(theta1))
@@ -270,6 +162,8 @@ def main():
     camera = Camera()
     camera_connected = False
     completed = False
+    ackermann = AckermannController()
+    planning = PathPlanning(ackermann)
 
     try:
         dds.start()
@@ -277,15 +171,13 @@ def main():
         # La connessione resta pronta mentre il braccio raggiunge la posa visuale.
         camera.connect()
         camera_connected = True
+        path = planning.build_path_to_pick_zone()
+        planning.build_angle_search(path)
 
-        path = build_path_to_pick_zone()
-        path = build_angle_search(path)
         print(f"Percorso verso B: {len(path)} punti, arrivo {path[-1]}")
 
-        ackermann = AckermannController()
         ackermann.set_pose(1.0, -1, 0.0) #1 -1 #-3 20
         arm = FourJointsManipulatorControl()
-        print(f"L1={arm.arm.element_1.L} L2={arm.arm.element_2.L} L3={arm.arm.element_3.L}")
         visual_picker = VisualPickController(camera.width, camera.height)
         plotters = build_plotters()
 
@@ -293,8 +185,7 @@ def main():
         cargo_color = CargoColorCode.UNKNOWN
         unload_zone = UnloadZoneCode.UNKNOWN #A o C
         payload_mass = 0.0
-        waypoint_index = 0
-        target = path[waypoint_index]
+        target= planning.reset()
         pick_xy = None
         missing_frames = 0
         arm_settle_frames = 0
@@ -303,6 +194,7 @@ def main():
         elapsed_time = 0.0
 
         ackermann.start_motion(target)
+        arm.set_target(*ARM_MOVEMENT_TARGET, ARM_ORIENTATION)
 
         publish_state(
             dds,
@@ -322,13 +214,8 @@ def main():
             arm.evaluate(delta_t)
 
             if mission is MissionStateId.DRIVE_TO_B:
-                waypoint_index, target, arrived = follow_path(
-                    ackermann,
+                arrived = planning.follow_path(
                     delta_t,
-                    path,
-                    waypoint_index,
-                    target,
-                    step,
                     "Guida verso B",
                 )
                 if arrived:
@@ -417,7 +304,6 @@ def main():
                     pick_xy = (current_x, current_y)
                     camera.close()
                     camera_connected = False
-                    ##indagare su arm_approach
                     lift_target = (*pick_xy, ARM_APPROACH_TARGET[2])
                     arm.set_target(*lift_target, ARM_ORIENTATION)
                     mission = MissionStateId.PICK_LIFT_SAFE
@@ -429,10 +315,9 @@ def main():
             elif mission is MissionStateId.PICK_LIFT_SAFE:
                 if arm_has_reached(arm, lift_target):
                     print("unload_zone", unload_zone)
-                    path = build_path_to_unload_zone(unload_zone)
-                    path = build_angle_search(path)
-                    waypoint_index = 0
-                    target = path[waypoint_index]
+                    path=planning.build_path_to_unload_zone(unload_zone)
+                    planning.build_angle_search(path)
+                    target = planning.reset()
                     ackermann.start_motion(target)
                     mission = MissionStateId.DRIVE_TO_UNLOAD
                     print(
@@ -441,13 +326,8 @@ def main():
                     )
 
             elif mission is MissionStateId.DRIVE_TO_UNLOAD:
-                waypoint_index, target, arrived = follow_path(
-                    ackermann,
+                arrived = planning.follow_path(
                     delta_t,
-                    path,
-                    waypoint_index,
-                    target,
-                    step,
                     f"Guida verso {unload_zone.name}",
                     UNLOAD_FINAL_THRESHOLD,
                 )
