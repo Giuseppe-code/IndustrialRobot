@@ -16,17 +16,17 @@ class AckermannController:
             _lateral_wheelbase= 1)
         self.trajectory =StraightLine2DMotion( 
                 _vmax = 4, 
-                _acc = 4.5,
-                _dec= 4.5)
+                _acc = 3.5,
+                _dec= 3.5)
     
         self.polar2D = Polar2DController(
-                KP_linear=2,
+                KP_linear=1.5,
                 v_max=4,
-                KP_heading=1.5,
+                KP_heading=1,
                 steering_max=math.radians(40)
             )
 
-        self.linearSpeedController = PID_Controller(20, 8, 0, 100)
+        self.linearSpeedController = PID_Controller(18, 8, 0, 100)
         self.pose=[0,0,0]
         self.v=0
         self.vt=0

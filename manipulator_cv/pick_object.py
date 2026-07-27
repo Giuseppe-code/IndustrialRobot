@@ -68,8 +68,8 @@ class VisualPickController:
     def evaluate(self, image, current_pose, delta_t, color_finded : CargoColorCode):
         binary_image = None
         cx, cy, binary_image = self.object_finders[color_finded].find(image)
-        cv2.imshow("binary_image", binary_image)
-        key = cv2.waitKey(1) & 0xFF
+        #cv2.imshow("binary_image", binary_image)
+        #key = cv2.waitKey(1) & 0xFF
         x, y, _, _ = current_pose
 
         #print("cx", cx, "cy", cy)

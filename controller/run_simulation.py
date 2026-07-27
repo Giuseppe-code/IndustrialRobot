@@ -294,7 +294,7 @@ def main():
                     key = cv2.waitKey(1) & 0xFF
                     if key == ord('q'):
                         break
-                if (abs(result.error[0]) < 10)and(abs(result.error[1]) < 10) and height > PICK_HEIGHT:
+                if (abs(result.error[0]) < 8)and(abs(result.error[1]) < 8) and height > PICK_HEIGHT:
                     height -= 0.15
                     down_target=(result.target[0], result.target[1], height)
                     if not arm.set_target(*down_target, ARM_ORIENTATION):
@@ -303,8 +303,8 @@ def main():
                 actual = arm.get_pose()
                 print(f"target=({down_target[0]:.3f}, {down_target[1]:.3f}, {down_target[2]:.3f}) actual=({actual[0]:.3f}, {actual[1]:.3f}, {actual[2]:.3f})")
 
-                print("valore height", height, "valore da raggiungere", PICK_HEIGHT)#0.05
-                if arm_has_reached(arm, down_target, position_threshold=15) and height <= PICK_HEIGHT:
+                print("valore height", height, "valore da raggiungere", PICK_HEIGHT)
+                if arm_has_reached(arm, down_target, position_threshold=0.5) and height <= PICK_HEIGHT:
                     payload_mass = PACKAGE_MASS_KG
                     ackermann.set_payload_mass(payload_mass)
                     current_x, current_y, _, _ = arm.get_pose()

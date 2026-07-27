@@ -15,9 +15,9 @@ def has_reached(x, y, target, threshold):
     target_x, target_y = target
     return math.dist((x,y), (target_x,target_y)) < threshold
 
-WAYPOINT_THRESHOLD = 2
+WAYPOINT_THRESHOLD = 1.3
 FINAL_THRESHOLD = 0.10
-UNLOAD_FINAL_THRESHOLD = 1
+UNLOAD_FINAL_THRESHOLD = 0.10
 # ogni punto va downscalato per la grandezza della scala per avere il riferimento godot.
 # punto a
 PICK_START_MAP = (50, 50)
@@ -25,8 +25,8 @@ PICK_START_MAP = (50, 50)
 PICK_TARGET_MAP = (175, 1375)
 # zone di drop associate al colore su mission_types
 UNLOAD_TARGET_MAP = {
-    UnloadZoneCode.A: (50, 50),
-    UnloadZoneCode.C: (925, 2025),#925, 2025 #900, 2050
+    UnloadZoneCode.A: (100, 50),
+    UnloadZoneCode.C: (900, 1975),#925, 2025 #900, 2050
 }
 
 
@@ -42,8 +42,8 @@ class PathPlanning:
         self.step = 0
 
     def add_obstacle(self):
-        self.world.add_rectangle_obstacle(525, 1500, 675, 1900) #rettangolo 575, 1550, 625, 1850 (12,34) larghezza (1,5.488), +  a l for margin
-        self.world.add_rectangle_obstacle(37.5, 1362.5, 62.5, 1387.5) #pacco pos (1, 27,5), larghezza 0,5
+        self.world.add_rectangle_obstacle(525, 1550, 675, 1850) #rettangolo 575, 1550, 625, 1850 (12,34) larghezza (1,5.488), +  a l for margin
+        self.world.add_rectangle_obstacle(37.5, 1350, 62.5, 1450) #pacco pos (1, 27,5), larghezza 0,5 #37.5, 1362.5, 62.5, 1387.5
         return 
 
     def set_target(self):
@@ -74,7 +74,6 @@ class PathPlanning:
             distanceX= path[index][0] - path[index+1][0]
             distanceY= path[index][1] - path[index+1][1]
             while index < len(path)-1 and distanceX == (path[index][0] - path[index+1][0]) and distanceY == (path[index][1] - path[index+1][1]):
-                print("dentro dentro")
                 index+=1
             new_path.append(path[index])
             index+=1
@@ -109,6 +108,7 @@ class PathPlanning:
             print("Target", self.target)
 
 
+        
         if not has_reached(*self.ackermann.pose[:2], self.target, threshold):
             return False
 
