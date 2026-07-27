@@ -64,10 +64,7 @@ func _package_material() -> StandardMaterial3D:
 
 func _selected_color_code() -> int:
 	# L'override d'ambiente rende ripetibili i test senza alterare la scena.
-	var environment_code := OS.get_environment("PACKAGE_COLOR_CODE")
-	if environment_code == "1" or environment_code == "2":
-		return int(environment_code)
-	forced_color_code = RED_CODE
+	forced_color_code = BLUE_CODE
 	if forced_color_code == BLUE_CODE or forced_color_code == RED_CODE:
 		return forced_color_code
 	return rng.randi_range(BLUE_CODE, RED_CODE)

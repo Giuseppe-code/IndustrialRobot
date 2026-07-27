@@ -27,7 +27,8 @@ from path_planning.world import World
 
 
 ARM_ORIENTATION = math.radians(-105)
-ARM_APPROACH_TARGET = (-0.8, 0.0, 0.75)
+ARM_APPROACH_TARGET_1 = (-0.32, -0.25, 0.75)
+ARM_APPROACH_TARGET_2 = (+0.8, 0.0, 0.75)
 ARM_MOVEMENT_TARGET = (0.20, 0.00, 0.55)
 # visual scan  multiposa temporaneamente disabilitata.
 # VISION_SEARCH_TARGETS = (
@@ -51,7 +52,7 @@ PICK_TARGET_MAP = (175, 1375)
 # zone di drop associate al colore su mission_types
 UNLOAD_TARGET_MAP = {
     UnloadZoneCode.A: (50, 50),
-    UnloadZoneCode.C: (925, 2025),#925, 2025 #900, 2050
+    UnloadZoneCode.C: (900, 1975),#925, 2025 #900, 2050
 }
 
 
@@ -296,7 +297,7 @@ def main():
         pick_xy = None
         missing_frames = 0
         arm_settle_frames = 0
-        vision_target = ARM_APPROACH_TARGET
+        vision_target = ARM_APPROACH_TARGET_1
         step = 0
         elapsed_time = 0.0
 
@@ -360,17 +361,19 @@ def main():
                     UNLOAD_FINAL_THRESHOLD,
                 )
                 if arrived:
-                    arm.set_target(*ARM_APPROACH_TARGET, ARM_ORIENTATION)
+                    if unload_zone == UnloadZoneCode.C:
+                        arm_approach= ARM_APPROACH_TARGET_2
+                    else:
+                        arm_approach=ARM_APPROACH_TARGET_1
+                    arm.set_target(*arm_approach, ARM_ORIENTATION)
                     mission = MissionStateId.DROP_APPROACH
                     print(f"DROP_APPROACH: arrivo in zona {unload_zone.name}")
-                    #mission = MissionStateId.DONE
-                    #completed = True
 
             elif mission is MissionStateId.DROP_APPROACH:
-                if arm_has_reached(arm, ARM_APPROACH_TARGET):
+                if arm_has_reached(arm, arm_approach):
                     drop_target = (
-                        ARM_APPROACH_TARGET[0],
-                        ARM_APPROACH_TARGET[1],
+                        arm_approach[0],
+                        arm_approach[1],
                         DROP_HEIGHT,
                     )
                     arm.set_target(*drop_target, ARM_ORIENTATION)
@@ -378,12 +381,7 @@ def main():
                     print("DROP_DOWN: inizio deposito del pacco")
 
             elif mission is MissionStateId.DROP_DOWN:
-                drop_target = (
-                    ARM_APPROACH_TARGET[0],
-                    ARM_APPROACH_TARGET[1],
-                    DROP_HEIGHT,
-                )
-                if arm_has_reached(arm, drop_target):
+                if arm_has_reached(arm, drop_target, position_threshold=0.2):
                     payload_mass = 0.0
                     ackermann.set_payload_mass(payload_mass)
                     arm.set_target(*ARM_MOVEMENT_TARGET, ARM_ORIENTATION)
@@ -391,7 +389,7 @@ def main():
                     print("DROP_LIFT_SAFE: pacco rilasciato, massa rimossa")
 
             elif mission is MissionStateId.DROP_LIFT_SAFE:
-                if arm_has_reached(arm, ARM_APPROACH_TARGET):
+                if arm_has_reached(arm, ARM_MOVEMENT_TARGET):
                     mission = MissionStateId.DONE
                     completed = True
                     print(

@@ -1,3 +1,4 @@
 res://default_env.tres
-res://slope_test_world.tscn
+res://cars/TestWorld.tscn
+res://cars/cargo_visualizer.gd
 res://cars/package_spawner.gd

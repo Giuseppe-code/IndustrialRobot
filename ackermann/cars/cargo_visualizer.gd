@@ -1,9 +1,9 @@
 extends Node3D
 
 @export var vehicle_path: NodePath = ^"../DemoCar"
-@export var carried_offset := Vector3(0.0, 0.8, 0.15)
+@export var carried_offset := Vector3(0.0, 0.8, 0.70)
 @export var delivered_position := Vector3(1.0, 0.281, -1.0)
-@export var delivered_position_c := Vector3(41.0, 1.505, -18.0)
+@export var delivered_position_c := Vector3(41.0, 0.281, -18.0)
 @export var package_size := Vector3(0.55, 0.55, 0.55)
 
 var vehicle: Node3D

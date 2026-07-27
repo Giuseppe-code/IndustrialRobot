@@ -27,8 +27,10 @@ from path_planning.world import World
 
 
 ARM_ORIENTATION = math.radians(-105)
-ARM_APPROACH_TARGET = (-0.8, 0.0, 0.75)
 ARM_MOVEMENT_TARGET = (0.20, 0.00, 0.55)
+ARM_APPROACH_TARGET_0 = (-0.8, 0.0, 0.75)
+ARM_APPROACH_TARGET_1 = (-0.32, -0.23, 0.75)
+ARM_APPROACH_TARGET_2 = (+0.42, -0.10, 0.75)
 
 PICK_HEIGHT = 0.15
 DROP_HEIGHT = 0.15
@@ -41,7 +43,7 @@ UNLOAD_FINAL_THRESHOLD = 1
 def arm_has_reached(
     arm : FourJointsManipulatorControl,
     target: tuple[float, float, float],
-    position_threshold=5,
+    position_threshold=0.5,
     angle_threshold=math.radians(3),
 ):
     x, y, z, angle = arm.get_pose()
@@ -53,7 +55,7 @@ def arm_has_reached(
         math.sin(angle - ARM_ORIENTATION),
         math.cos(angle - ARM_ORIENTATION),
     )
-    return abs(xy_error) <= position_threshold and abs(z_error) < position_threshold and abs(angle_error) <= angle_threshold
+    return abs(xy_error) <= position_threshold and z_error < position_threshold and abs(angle_error) <= angle_threshold
 
 # connessioni e update con dds
 def publish_state(
@@ -190,7 +192,7 @@ def main():
         pick_xy = None
         missing_frames = 0
         arm_settle_frames = 0
-        vision_target = ARM_APPROACH_TARGET
+        vision_target = ARM_APPROACH_TARGET_0
         step = 0
         elapsed_time = 0.0
 
@@ -231,7 +233,7 @@ def main():
                 if arm_has_reached(
                     arm,
                     vision_target,
-                    position_threshold=5,
+                    position_threshold=1,
                     angle_threshold=math.radians(0.25),
                 ):
                     visual_picker.reset()
@@ -265,6 +267,7 @@ def main():
                     if result.locked:
                         cargo_color = result.color
                         unload_zone = UNLOAD_ZONE_BY_COLOR[cargo_color]
+                        print("Unload_zone settato")
                         height= arm.get_pose()[2]
                         mission = MissionStateId.PICK_DOWN
                         visual_picker.locked_count=0
@@ -300,15 +303,15 @@ def main():
                 actual = arm.get_pose()
                 print(f"target=({down_target[0]:.3f}, {down_target[1]:.3f}, {down_target[2]:.3f}) actual=({actual[0]:.3f}, {actual[1]:.3f}, {actual[2]:.3f})")
 
-                print("valore height", height, "valore da raggiungere", PICK_HEIGHT)
-                if arm_has_reached(arm, down_target, position_threshold=3) and height <= PICK_HEIGHT:
+                print("valore height", height, "valore da raggiungere", PICK_HEIGHT)#0.05
+                if arm_has_reached(arm, down_target, position_threshold=15) and height <= PICK_HEIGHT:
                     payload_mass = PACKAGE_MASS_KG
                     ackermann.set_payload_mass(payload_mass)
                     current_x, current_y, _, _ = arm.get_pose()
                     pick_xy = (current_x, current_y)
                     camera.close()
                     camera_connected = False
-                    lift_target = (*pick_xy, ARM_APPROACH_TARGET[2])
+                    lift_target = (*pick_xy, ARM_APPROACH_TARGET_0[2])
                     arm.set_target(*lift_target, ARM_ORIENTATION)
                     mission = MissionStateId.PICK_LIFT_SAFE
 
@@ -336,15 +339,20 @@ def main():
                     UNLOAD_FINAL_THRESHOLD,
                 )
                 if arrived:
-                    arm.set_target(*ARM_APPROACH_TARGET, ARM_ORIENTATION)
+                    print("Target_1")
+                    arm_approach=ARM_APPROACH_TARGET_1
+                    if unload_zone == UnloadZoneCode.A:
+                        print("Target_2_ Setted")
+                        arm_approach= ARM_APPROACH_TARGET_2
+                    arm.set_target(*arm_approach, ARM_ORIENTATION)
                     mission = MissionStateId.DROP_APPROACH
                     print(f"DROP_APPROACH: arrivo in zona {unload_zone.name}")
 
             elif mission is MissionStateId.DROP_APPROACH:
-                if arm_has_reached(arm, ARM_APPROACH_TARGET):
+                if arm_has_reached(arm, arm_approach):
                     drop_target = (
-                        ARM_APPROACH_TARGET[0],
-                        ARM_APPROACH_TARGET[1],
+                        arm_approach[0],
+                        arm_approach[1],
                         DROP_HEIGHT,
                     )
                     arm.set_target(*drop_target, ARM_ORIENTATION)
@@ -352,7 +360,7 @@ def main():
                     print("DROP_DOWN: inizio deposito del pacco")
 
             elif mission is MissionStateId.DROP_DOWN:
-                if arm_has_reached(arm, drop_target):
+                if arm_has_reached(arm, drop_target, position_threshold=0.1):
                     payload_mass = 0.0
                     ackermann.set_payload_mass(payload_mass)
                     arm.set_target(*ARM_MOVEMENT_TARGET, ARM_ORIENTATION)
