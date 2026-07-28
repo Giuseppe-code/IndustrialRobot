@@ -103,8 +103,10 @@ publish_tick = false
 cull_mask = 1048575
 
 [node name="Pose" type="Label" parent="." unique_id=178613827]
-offset_right = 820.0
-offset_bottom = 125.0
+offset_left = -324.0
+offset_top = -341.0
+offset_right = 496.0
+offset_bottom = -216.0
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_font_sizes/font_size = 36
 text = "test"
